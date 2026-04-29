@@ -2,12 +2,27 @@
 
 ## Status
 
-Current task: create this detailed plan as the first project artifact.
+Current task: Task 2, Tizen Studio TV Emulator Setup.
 
 This file is the source of truth for later implementation TaskCards. Do not
 start application behavior changes until the relevant section of this plan has
 been converted into a bounded TaskCard with allowed files, validation commands,
 and acceptance criteria.
+
+Task 2 progress:
+
+- TV emulator `T-samsung-10.0-x86_64` boots.
+- `sdb` sees `emulator-26101 device T-samsung-10.0-x86_64`.
+- Emulator details and the Codex-shell Tizen CLI permission issue are recorded
+  in `docs/agent/local-toolchain.md`.
+- Final project target is a real Samsung TV on Tizen 8.0. The local Tizen 8.0
+  emulator image is generic `tizen`, not Samsung TV. The only local Samsung TV
+  emulator is Tizen 10.0 (`tv-samsung-10.0-x86_64`), so use it for local TV
+  runtime/toolchain debugging only.
+- Remaining acceptance: run or debug a basic Samsung TV web app from Tizen
+  Studio on the Tizen 10.0 TV emulator, confirm Log View runtime messages, and
+  confirm the JavaScript Log Console/Web Inspector debug path. Tizen 8.0
+  compatibility remains a real-device acceptance item.
 
 ## Goal
 
@@ -21,6 +36,8 @@ The module targets:
 - JavaScript injection through the module `main` file
 - Optional CSS injected by the module
 - Optional remote/media key registration through Tizen TV input APIs
+- Final target: Tizen 8.0 real Samsung TV runtime. Local emulator fallback:
+  Tizen 10.0 Samsung TV runtime.
 
 The module must not replace Stremio Web. Stremio Web remains responsible for:
 
@@ -1258,4 +1275,3 @@ Each implementation TaskCard should report:
 - Real TV evidence, if applicable
 - Risks or limitations
 - Follow-up TaskCards recommended
-

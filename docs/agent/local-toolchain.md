@@ -57,6 +57,25 @@ $env:Path = "E:\tizen-studio\tools;$env:Path"
   - `log_enable:disabled`
 - If a launched emulator is visible but missing from `sdb devices`, reboot the emulated TV once before changing repo files or reinstalling tools.
 - `E:\tizen-studio\tools\ide\bin\tizen.bat version` still returned `Tizen CLI 2.5.25` in the Codex shell, but also emitted access-denied errors for `E:\tizen-studio-data\cli\logs\cli.log` and `E:\tizen-studio\tools\.tizen-cli-config`; treat this as the known Windows identity/permissions issue below unless it also reproduces in the real desktop user context.
+- Rechecked on 2026-04-29: `E:\tizen-studio\tools\sdb.exe devices` still listed `emulator-26101 device T-samsung-10.0-x86_64`.
+- `E:\tizen-studio\tools\sdb.exe -s emulator-26101 capability` still reported TV profile details, including `profile_name:tv`, `vendor_name:Samsung`, `platform_version:10.0`, `cpu_arch:x86_64`, `can_launch:tv-samsung`, and `pkgcmd_debugmode:enabled`.
+- `E:\tizen-studio\tools\ide\bin\tizen.bat list web-project` ran far enough to list generic templates, but emitted the known Codex-shell access-denied errors for both `E:\tizen-studio-data\cli\logs\cli.log` and `E:\tizen-studio\tools\.tizen-cli-config`.
+- A temporary CLI-created `WebBasicApplication` probe produced a generic `<tizen:profile name="tizen"/>` app, not a Samsung TV profile app. Do not use that generic CLI template as Task 2 acceptance evidence.
+- Project target reminder: the final module targets a real Samsung TV on Tizen 8.0. The local Tizen 8.0 emulator image is generic `tizen` profile (`HD1080 Tizen`), not Samsung TV. The local Samsung TV emulator option is Tizen 10.0 (`T-samsung-10.0-x86_64`, `tv-samsung-10.0-x86_64`), so use it for local TV runtime/toolchain debugging only.
+- Installed SDK platforms include `E:\tizen-studio\platforms\tizen-8.0`.
+- `E:\tizen-studio\tools\emulator\bin\em-cli.bat list-vm` from the Codex sandbox hit `AccessDeniedException` for `E:\tizen-studio-data\emulator\vms\.em-gabip.serialize.lock`. Use Tizen Studio Emulator Manager in the desktop user context to confirm or create the Tizen 8.0 TV emulator VM.
+- User confirmed in Emulator Manager that the available Tizen 8.0 images are generic `HD1080 Tizen`; the available Samsung TV emulator is `HD1080 TV` on `tv-samsung-10.0-x86_64`.
+- Outside the sandbox, `E:\tizen-studio\tools\ide\bin\tizen.bat version` returned `Tizen CLI 2.5.25` without access-denied errors.
+- Outside the sandbox, `tizen security-profiles list` loaded `E:\tizen-studio-data\profile\profiles.xml` and showed active profile `MyTVProfile`.
+- A disposable Samsung TV web runtime-check app under `.agent-tmp` built successfully with `tizen build-web` and packaged successfully with `tizen package -t wgt -s MyTVProfile`.
+- `tizen install -n "Codex TV Runtime Check.wgt" -t emulator-26101` failed with `There is no emulator-26101 target`, even though `sdb devices` listed the emulator.
+- `sdb -s emulator-26101 install` pushed the WGT but ended with `closed`; direct pushes to common target paths also reported `You cannot push files to this path`.
+- Remaining Task 2 acceptance should be completed in Tizen Studio under the real desktop user context:
+  - Create a Samsung TV profile web project with the Basic Project template, or use an existing Samsung TV web project.
+  - Run it with `Run As > Tizen Web Application` on `T-samsung-10.0-x86_64`.
+  - Open `Window > Show View > Log` and confirm runtime messages appear.
+  - Launch with `Debug As > Tizen Web Application`; the JavaScript Log Console and Web Inspector path are expected in debug mode.
+  - Record that Tizen 8.0 final compatibility must be validated on the real Samsung TV, not the local generic Tizen 8.0 emulator.
 
 ## Tizen CLI log permissions
 
