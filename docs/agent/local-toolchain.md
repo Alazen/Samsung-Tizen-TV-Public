@@ -31,6 +31,33 @@ $env:Path = "E:\tizen-studio\tools;$env:Path"
 
 - Validation: `sdb version` returned `Smart Development Bridge version 4.2.25`.
 
+## Tizen TV emulator setup notes
+
+- Emulator Manager has a TV emulator instance:
+  - Name: `T-samsung-10.0-x86_64`
+  - Profile: `tv`
+  - Platform: `tv-samsung-10.0-x86_64`
+  - Template: `HD1080 TV`
+  - Resolution: `HD1080(1920x1080)`
+  - Network: `NAT`
+  - CPU VT: `ON`
+  - GPU: `ON`
+- Observed on 2026-04-29: after the emulator first launched, `sdb devices` returned an empty device list even though the emulator UI was visible.
+- Repair used: reboot the emulated TV from the emulator UI.
+- Validation after reboot:
+  - `E:\tizen-studio\tools\sdb.exe version` returned `Smart Development Bridge version 4.2.36`.
+  - `E:\tizen-studio\tools\sdb.exe devices` listed `emulator-26101 device T-samsung-10.0-x86_64`.
+- `E:\tizen-studio\tools\sdb.exe -s emulator-26101 capability` reported:
+  - `profile_name:tv`
+  - `vendor_name:Samsung`
+  - `platform_version:10.0`
+  - `cpu_arch:x86_64`
+  - `can_launch:tv-samsung`
+  - `pkgcmd_debugmode:enabled`
+  - `log_enable:disabled`
+- If a launched emulator is visible but missing from `sdb devices`, reboot the emulated TV once before changing repo files or reinstalling tools.
+- `E:\tizen-studio\tools\ide\bin\tizen.bat version` still returned `Tizen CLI 2.5.25` in the Codex shell, but also emitted access-denied errors for `E:\tizen-studio-data\cli\logs\cli.log` and `E:\tizen-studio\tools\.tizen-cli-config`; treat this as the known Windows identity/permissions issue below unless it also reproduces in the real desktop user context.
+
 ## Tizen CLI log permissions
 
 - Observed error: Tizen CLI emitted `FileNotFoundException: E:\tizen-studio-data\cli\logs\cli.log (Acesso negado)`.
