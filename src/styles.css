@@ -1,0 +1,9 @@
+:root {
+  --stremio-remote-focus-outline: #20c997;
+}
+
+/* Placeholder style hooks for future focus treatments. */
+[data-stremio-remote-focus="true"] {
+  outline: 3px solid var(--stremio-remote-focus-outline);
+  outline-offset: 2px;
+}

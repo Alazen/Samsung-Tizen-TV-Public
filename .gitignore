@@ -1,0 +1,8 @@
+target/
+*.exe
+*.zip
+*.log
+.cache/
+tmp/
+temp/
+node_modules/
