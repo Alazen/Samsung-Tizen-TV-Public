@@ -23,6 +23,10 @@ If npm is broken but the bundled CLI works, use direct Node validation commands 
 - SDB path observed: `E:\tizen-studio\tools\sdb.exe`.
 - Issue: `tizen` was on PATH through `E:\tizen-studio\tools\ide\bin`, but `sdb` was not because `E:\tizen-studio\tools` was missing.
 - Persistent user PATH repair used: add `E:\tizen-studio\tools` to the real user PATH.
+- Additional user PATH entries added for Tizen CLI and emulator tooling:
+  - `E:\tizen-studio\tools`
+  - `E:\tizen-studio\tools\ide\bin`
+  - `E:\tizen-studio\tools\emulator\bin`
 - Existing terminals may not see the PATH update. For the current PowerShell session, prepend:
 
 ```powershell
@@ -30,6 +34,10 @@ $env:Path = "E:\tizen-studio\tools;$env:Path"
 ```
 
 - Validation: `sdb version` returned `Smart Development Bridge version 4.2.25`.
+- After the additional PATH update, real-user command resolution found:
+  - `sdb` at `E:\tizen-studio\tools\sdb.exe`
+  - `tizen` at `E:\tizen-studio\tools\ide\bin\tizen.bat`
+- Existing Codex/app processes may not pick up the new `E:\tizen-studio\tools\emulator\bin` entry until they are restarted. Explicit path validation still worked: `E:\tizen-studio\tools\emulator\bin\em-cli.bat list-vm` returned `T-samsung-10.0-x86_64`.
 
 ## Tizen TV emulator setup notes
 
