@@ -6,3 +6,13 @@ target/
 tmp/
 temp/
 node_modules/
+.agent-tmp/
+*.wgt
+.build/
+.buildResult/
+.package/
+.settings/
+.sign/
+.externalToolBuilders/
+.rds_delta
+.sdk_delta.info

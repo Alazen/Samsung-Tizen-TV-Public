@@ -2,8 +2,34 @@
   --stremio-remote-focus-outline: #20c997;
 }
 
-/* Placeholder style hooks for future focus treatments. */
 [data-stremio-remote-focus="true"] {
   outline: 3px solid var(--stremio-remote-focus-outline);
   outline-offset: 2px;
+}
+
+[data-stremio-remote-diagnostics-panel="1"] {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 2147483647;
+  width: min(420px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  padding: 12px 14px;
+  border: 1px solid rgba(32, 201, 151, 0.45);
+  border-radius: 10px;
+  background: rgba(6, 12, 18, 0.92);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  color: #f3fff9;
+  font: 12px/1.45 Consolas, "Courier New", monospace;
+  white-space: pre-wrap;
+  display: none;
+}
+
+[data-stremio-remote-diagnostics-panel="1"][data-open="true"] {
+  display: block;
+}
+
+[data-stremio-remote-diagnostics-body="1"] {
+  margin: 0;
 }

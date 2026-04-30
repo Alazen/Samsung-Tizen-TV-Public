@@ -2,7 +2,7 @@
 
 ## Status
 
-Current task: Task 2, Tizen Studio TV Emulator Setup.
+Current task: Task 3, Emulator Debug Harness Decision.
 
 This file is the source of truth for later implementation TaskCards. Do not
 start application behavior changes until the relevant section of this plan has
@@ -32,10 +32,16 @@ Task 2 progress:
 - DevTools/Web Inspector is working against the emulator app. Console output
   confirmed both the startup log path (`init() called`) and a manual
   `console.log('Codex TV debug path works')` round-trip.
-- Remaining acceptance: configure/debug the Samsung TV web app on the Tizen
-  10.0 TV emulator, confirm Log View runtime messages, and confirm the
-  JavaScript Log Console/Web Inspector debug path. Tizen 8.0 compatibility
-  remains a real-device acceptance item.
+- The real desktop-user terminal context can launch the emulator directly with
+  `em-cli.bat launch -n T-samsung-10.0-x86_64`; `sdb devices` then lists
+  `emulator-26101 device T-samsung-10.0-x86_64`.
+- Official vendored Tizen Studio docs and the local `tz.exe` install expose a
+  `tz run -d` Web Inspector debug-mode path, but that terminal-driven flow has
+  not yet been validated end to end against the Samsung TV emulator project.
+- Residual limitation: Tizen Studio Log View runtime-message confirmation and a
+  repeatable Samsung TV emulator debug configuration are still unverified in
+  the real desktop-user context; this does not block advancing to Task 3.
+- Tizen 8.0 compatibility remains a real-device acceptance item.
 
 ## Goal
 
@@ -287,24 +293,37 @@ Objective:
 
 Default approach:
 
-- Use a minimal local TV web app wrapper only for debug if needed.
-- The wrapper should load a page that can exercise `src/main.js` in a Tizen web
-  runtime.
-- Do not confuse the wrapper with the production TizenBrew module.
+- Primary debug harness: reuse the existing external Samsung TV Basic Project
+  `CodexTvRuntimeCheck`.
+- Treat `CodexTvRuntimeCheck` as a debug-only harness outside committed product
+  source and outside product architecture.
+- Preferred repeatable debug path:
+  `E:\tizen-studio\tools\tizen-core\tz.exe run -d -e emulator-26101 -w <project-path>`.
+- `<project-path>` should point to the external `CodexTvRuntimeCheck` project
+  root (directory containing `config.xml`).
+- If the external project path is unavailable, use a disposable untracked
+  harness under `.agent-tmp` and remove/replace it freely.
+- Harness surface should stay minimal: only enough DOM/runtime to observe
+  keydown events, style injection behavior, and Tizen API availability.
 - Do not commit generated Tizen Studio project files unless explicitly approved.
 
 Possible options:
 
-- Use Tizen Studio Web Simulator or emulator with a minimal test page.
-- Use a temporary untracked TV web app project outside the repo.
-- Use a committed debug harness only if later approved as a first-class source
-  artifact.
+- Use Tizen Studio emulator with the external `CodexTvRuntimeCheck` project as
+  first choice.
+- Use a temporary untracked TV web app project under `.agent-tmp` only when the
+  external project path cannot be used.
+- Do not add a committed harness project unless explicitly approved as a
+  separate decision.
 
 Acceptance:
 
 - We can observe keydown events, focus behavior, style injection, and Tizen API
   availability in a TV-like web runtime.
-- The debug harness does not become product architecture.
+- `tz.exe run -d` against the selected harness is recorded as the repeatable
+  debug path.
+- The debug harness does not become product architecture and is not committed as
+  product source by default.
 
 ### Task 4: Runtime Core
 

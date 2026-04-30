@@ -99,12 +99,42 @@ $env:Path = "E:\tizen-studio\tools;$env:Path"
   - Console output showed the app startup log (`init() called`).
   - A manual `console.log('Codex TV debug path works')` appeared in DevTools and confirmed the debug bridge.
   - The browser warning about pasting into DevTools is expected and does not block the workflow.
-- Remaining Task 2 acceptance should be completed in Tizen Studio under the real desktop user context:
-  - Create a Samsung TV profile web project with the Basic Project template, or use an existing Samsung TV web project.
-  - Run it with `Run As > Tizen Web Application (Samsung TV)` on `T-samsung-10.0-x86_64`.
-  - Open `Window > Show View > Log` and confirm runtime messages appear.
-  - Configure debug for the Samsung TV emulator; the JavaScript Log Console and Web Inspector path are expected in debug mode.
-  - Record that Tizen 8.0 final compatibility must be validated on the real Samsung TV, not the local generic Tizen 8.0 emulator.
+- On 2026-04-30, outside the sandbox, `E:\tizen-studio\tools\emulator\bin\em-cli.bat list-vm` returned `T-samsung-10.0-x86_64`.
+- On 2026-04-30, outside the sandbox, `E:\tizen-studio\tools\emulator\bin\em-cli.bat launch -n T-samsung-10.0-x86_64` launched the emulator successfully. About 5 seconds later, `E:\tizen-studio\tools\sdb.exe devices` listed `emulator-26101 device T-samsung-10.0-x86_64`.
+- A newer Tizen CLI is also installed at `E:\tizen-studio\tools\tizen-core\tz.exe` even though it is not currently on PATH in the Codex shell.
+- `E:\tizen-studio\tools\tizen-core\tz.exe emul list-vm` returned `T-samsung-10.0-x86_64`.
+- `E:\tizen-studio\tools\tizen-core\tz.exe run --help` advertises `-d, --debug-mode` with the description `Run web app in debug mode in Web Inspector`.
+- Official vendored Tizen Studio docs also state that the JavaScript Log Console view is active only in Debug launch mode.
+
+## Task 3 emulator debug harness recipe
+
+- Primary harness decision: use the existing external Samsung TV Basic Project
+  `CodexTvRuntimeCheck` as the default emulator debug harness.
+- Preferred repeatable debug command:
+  `E:\tizen-studio\tools\tizen-core\tz.exe run -d -e emulator-26101 -w <project-path>`.
+- Required `-w` value: absolute path to the external `CodexTvRuntimeCheck`
+  project root (the folder containing `config.xml`).
+- Fallback when that external path is unavailable: use a disposable untracked
+  harness under `.agent-tmp`.
+- Harness scope is intentionally minimal and debug-only: enough DOM/runtime
+  surface to verify keydown events, style injection behavior, and Tizen API
+  availability.
+- This harness is not product architecture and should not be committed as
+  product source.
+
+Required evidence to record for this recipe:
+
+- The exact `tz.exe run -d -e emulator-26101 -w <project-path>` command and
+  resolved project path used.
+- Confirmation that Web Inspector or JavaScript Log Console attached in debug
+  mode.
+- Observed key event name/code output from the harness page.
+- Evidence that style injection executed (for example, visible marker style or
+  expected injected style tag state).
+- Evidence that Tizen API availability checks ran (for example, presence/absence
+  of `window.tizen`, `tizen.tvinputdevice`, and `tizen.application`).
+- Record that Tizen 8.0 final compatibility must be validated on a real Samsung
+  TV, not the local generic Tizen 8.0 emulator.
 
 ## Tizen CLI log permissions
 
