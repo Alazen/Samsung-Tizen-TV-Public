@@ -24,6 +24,8 @@ function createMockElement(tagName, options = {}) {
     parentNode: null,
     ownerDocument: null,
     style: {},
+    className: typeof options.className === "string" ? options.className : "",
+    id: typeof options.id === "string" ? options.id : "",
     isContentEditable: Boolean(options.isContentEditable),
     contentEditable: options.contentEditable || "inherit",
     hidden: Boolean(options.hidden),
@@ -58,6 +60,10 @@ function createMockElement(tagName, options = {}) {
         this.isContentEditable = stringValue === "true";
       } else if (name === "href") {
         this.href = stringValue;
+      } else if (name === "class") {
+        this.className = stringValue;
+      } else if (name === "id") {
+        this.id = stringValue;
       }
     },
     getAttribute(name) {
@@ -83,6 +89,12 @@ function createMockElement(tagName, options = {}) {
       if (name === "href") {
         return typeof this.href === "string" ? this.href : null;
       }
+      if (name === "class") {
+        return this.className || null;
+      }
+      if (name === "id") {
+        return this.id || null;
+      }
       return null;
     },
     removeAttribute(name) {
@@ -100,6 +112,10 @@ function createMockElement(tagName, options = {}) {
         this.isContentEditable = false;
       } else if (name === "href") {
         this.href = undefined;
+      } else if (name === "class") {
+        this.className = "";
+      } else if (name === "id") {
+        this.id = "";
       }
     },
     focus() {
@@ -136,6 +152,9 @@ function createMockElement(tagName, options = {}) {
     },
     querySelectorAll(selector) {
       return collectInTree(this.children, selector, []);
+    },
+    matches(selector) {
+      return matchesSelector(this, selector);
     }
   };
 
@@ -164,21 +183,22 @@ function createMockElement(tagName, options = {}) {
   return element;
 }
 
-function matchesSelector(node, selector) {
-  if (!node || typeof selector !== "string") {
+function getSelectorAttributeValue(node, attributeName) {
+  if (!node) {
+    return null;
+  }
+  if (attributeName === "class") {
+    return node.className || null;
+  }
+  if (attributeName === "id") {
+    return node.id || null;
+  }
+  return typeof node.getAttribute === "function" ? node.getAttribute(attributeName) : null;
+}
+
+function matchesSimpleSelector(node, selector) {
+  if (!node || typeof selector !== "string" || selector.length === 0) {
     return false;
-  }
-
-  if (selector === "style[data-stremio-remote-style='1']") {
-    return node.tagName === "STYLE" && node.dataset.stremioRemoteStyle === "1";
-  }
-
-  if (selector === "[data-stremio-remote-diagnostics-panel='1']") {
-    return node.dataset.stremioRemoteDiagnosticsPanel === "1";
-  }
-
-  if (selector === "[data-stremio-remote-diagnostics-body='1']") {
-    return node.dataset.stremioRemoteDiagnosticsBody === "1";
   }
 
   const tagAndAttrMatch = selector.match(/^([a-zA-Z0-9_-]+)\[(.+)\]$/);
@@ -189,11 +209,17 @@ function matchesSelector(node, selector) {
     selector = `[${tagAndAttrMatch[2]}]`;
   }
 
+  const containsAttrMatch = selector.match(/^\[([^\]=]+)\*=(["']?)(.*?)\2\]$/);
+  if (containsAttrMatch) {
+    const actualValue = getSelectorAttributeValue(node, containsAttrMatch[1]);
+    return typeof actualValue === "string" && actualValue.includes(containsAttrMatch[3]);
+  }
+
   const attrMatch = selector.match(/^\[([^\]=]+)(?:=(["']?)(.*?)\2)?\]$/);
   if (attrMatch) {
     const attributeName = attrMatch[1];
     const expectedValue = typeof attrMatch[3] === "string" && attrMatch[3].length > 0 ? attrMatch[3] : null;
-    const actualValue = node.getAttribute(attributeName);
+    const actualValue = getSelectorAttributeValue(node, attributeName);
 
     if (expectedValue === null) {
       return actualValue !== null;
@@ -202,16 +228,38 @@ function matchesSelector(node, selector) {
     return actualValue === expectedValue;
   }
 
-  const lowerSelector = selector.toLowerCase();
-  if (lowerSelector === "button" || lowerSelector === "input" || lowerSelector === "textarea") {
-    return node.tagName === lowerSelector.toUpperCase();
+  return /^[a-zA-Z0-9_-]+$/.test(selector) && node.tagName === selector.toUpperCase();
+}
+
+function matchesSelector(node, selector) {
+  if (!node || typeof selector !== "string") {
+    return false;
   }
 
-  if (lowerSelector === "a") {
-    return node.tagName === "A";
-  }
+  return selector
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .some((part) => {
+      const segments = part.split(/\s+/).filter(Boolean);
+      let currentNode = node;
 
-  return false;
+      if (!segments.length || !matchesSimpleSelector(currentNode, segments[segments.length - 1])) {
+        return false;
+      }
+
+      for (let index = segments.length - 2; index >= 0; index -= 1) {
+        currentNode = currentNode.parentNode;
+        while (currentNode && !matchesSimpleSelector(currentNode, segments[index])) {
+          currentNode = currentNode.parentNode;
+        }
+        if (!currentNode) {
+          return false;
+        }
+      }
+
+      return true;
+    });
 }
 
 function findInTree(nodes, selector) {
@@ -317,6 +365,66 @@ function createKeyEvent(key, options = {}) {
   };
 }
 
+function createMockHistory(options = {}) {
+  return {
+    length: typeof options.length === "number" ? options.length : 1,
+    backCount: 0,
+    back() {
+      this.backCount += 1;
+    }
+  };
+}
+
+function bootstrapMainScript(options = {}) {
+  const code = fs.readFileSync(mainScriptPath, "utf8");
+  const document = options.document || createMockDocument();
+  const context = {
+    Date,
+    document,
+    location: options.location || { pathname: "/unit-test" },
+    history: options.history,
+    tizen: options.tizen,
+    MutationObserver: options.MutationObserver,
+    requestAnimationFrame: options.requestAnimationFrame,
+    getComputedStyle: options.getComputedStyle,
+    innerWidth: options.innerWidth,
+    innerHeight: options.innerHeight
+  };
+
+  vm.createContext(context);
+  vm.runInContext(code, context, { filename: mainScriptPath });
+
+  return {
+    context,
+    document,
+    api: context[NAMESPACE]
+  };
+}
+
+function dispatchKey(document, key, options = {}) {
+  const event = createKeyEvent(key, options);
+  document.dispatch("keydown", event);
+  return event;
+}
+
+function primeExitModalLayout(document) {
+  const modal = document.querySelector("[data-stremio-remote-exit-modal='1']");
+  const dialog = modal.querySelector("[data-stremio-remote-exit-dialog='1']");
+  const [keepWatchingButton, endAppButton] = dialog.querySelectorAll("[data-stremio-remote-exit-button='1']");
+
+  setElementRect(modal, { left: 0, top: 0, width: 1280, height: 720 });
+  setElementRect(dialog, { left: 360, top: 220, width: 420, height: 220 });
+  setElementRect(keepWatchingButton, { left: 392, top: 356, width: 160, height: 48 });
+  setElementRect(endAppButton, { left: 572, top: 356, width: 160, height: 48 });
+
+  return {
+    modal,
+    dialog,
+    keepWatchingButton,
+    endAppButton
+  };
+}
+
 test("src/main.js is valid JavaScript syntax", () => {
   const code = fs.readFileSync(mainScriptPath, "utf8");
   assert.doesNotThrow(() => {
@@ -325,11 +433,12 @@ test("src/main.js is valid JavaScript syntax", () => {
 });
 
 test("src/main.js bootstraps with runtime state, diagnostics, and TV input helpers", () => {
-  const code = fs.readFileSync(mainScriptPath, "utf8");
   const registeredKeys = [];
-  const document = createMockDocument();
-  const context = {
-    Date,
+  const { context, document, api } = bootstrapMainScript({
+    document: createMockDocument(),
+    location: {
+      pathname: "/unit-test"
+    },
     tizen: {
       tvinputdevice: {
         registerKey(keyName) {
@@ -341,15 +450,8 @@ test("src/main.js bootstraps with runtime state, diagnostics, and TV input helpe
       }
     },
     MutationObserver: function MutationObserver() {},
-    requestAnimationFrame() {},
-    location: {
-      pathname: "/unit-test"
-    },
-    document
-  };
-
-  vm.createContext(context);
-  vm.runInContext(code, context, { filename: mainScriptPath });
+    requestAnimationFrame() {}
+  });
 
   assert.equal(document.head.children.length, 1);
   assert.equal(document.head.children[0].tagName, "STYLE");
@@ -358,8 +460,8 @@ test("src/main.js bootstraps with runtime state, diagnostics, and TV input helpe
   assert.ok(registeredKeys.includes("MediaPlayPause"));
   assert.equal(registeredKeys.includes("Back"), false);
   assert.equal(document.querySelector("[data-stremio-remote-diagnostics-panel='1']").dataset.open, "false");
+  assert.equal(document.querySelector("[data-stremio-remote-exit-modal='1']").dataset.open, "false");
 
-  const api = context[NAMESPACE];
   assert.equal(api.initialized, true);
   assert.equal(typeof api.getState, "function");
   assert.equal(typeof api.renderDiagnostics, "function");
@@ -373,6 +475,10 @@ test("src/main.js bootstraps with runtime state, diagnostics, and TV input helpe
   assert.equal(state.apiAvailability.tvInputDevice, true);
   assert.equal(state.apiAvailability.application, false);
   assert.equal(state.diagnosticsOpen, false);
+  assert.equal(state.exitModalOpen, false);
+  assert.equal(state.lastExitAttempt, null);
+  assert.equal(state.lastExitResult, null);
+  assert.equal(state.lastBackResolution, null);
 
   const snapshot = api.getState();
   snapshot.registeredKeys.length = 0;
@@ -382,30 +488,25 @@ test("src/main.js bootstraps with runtime state, diagnostics, and TV input helpe
   assert.ok(api.getState().failedKeys.some((entry) => entry.keyName === "ColorF0Red"));
 });
 
-test("src/main.js bootstrap is idempotent and keeps one listener, one style, and one diagnostics panel", () => {
-  const code = fs.readFileSync(mainScriptPath, "utf8");
-  const document = createMockDocument();
-  const context = {
-    Date,
+test("src/main.js bootstrap is idempotent and keeps one listener, one style, one diagnostics panel, and one exit modal", () => {
+  const { context, document } = bootstrapMainScript({
+    document: createMockDocument(),
+    location: {
+      pathname: "/idempotent"
+    },
     tizen: {
       tvinputdevice: {
         registerKey() {}
       }
-    },
-    location: {
-      pathname: "/idempotent"
-    },
-    document
-  };
-
-  vm.createContext(context);
-  vm.runInContext(code, context, { filename: mainScriptPath });
+    }
+  });
   const firstInitTime = context[NAMESPACE].getState().initTime;
+  const code = fs.readFileSync(mainScriptPath, "utf8");
   vm.runInContext(code, context, { filename: mainScriptPath });
 
   assert.equal(document.head.children.length, 1);
   assert.equal(document.listenerCount("keydown"), 1);
-  assert.equal(document.body.children.length, 1);
+  assert.equal(document.body.children.length, 2);
   assert.equal(context[NAMESPACE].getState().initTime, firstInitTime);
 });
 
@@ -466,7 +567,344 @@ test("src/main.js toggles diagnostics through key events and closes on Back whil
   assert.equal(closeEvent.defaultPrevented, true);
   assert.equal(context[NAMESPACE].getState().diagnosticsOpen, false);
   assert.equal(context[NAMESPACE].getState().lastConsumedAction, "diagnostics:close");
+  assert.equal(context[NAMESPACE].getState().lastBackResolution, "diagnostics:close");
   assert.equal(panel.dataset.open, "false");
+});
+
+test("src/main.js Back closes diagnostics first and opens the exit modal when no safe action exists", () => {
+  const { document, api } = bootstrapMainScript({
+    document: createMockDocument(),
+    location: {
+      pathname: "/back-priority"
+    },
+    tizen: {
+      tvinputdevice: {
+        registerKey() {}
+      }
+    }
+  });
+
+  const openDiagnosticsEvent = dispatchKey(document, "Info", { code: "Info" });
+  assert.equal(openDiagnosticsEvent.defaultPrevented, true);
+  assert.equal(api.getState().diagnosticsOpen, true);
+
+  const closeDiagnosticsEvent = dispatchKey(document, "Back", { code: "BrowserBack" });
+  assert.equal(closeDiagnosticsEvent.defaultPrevented, true);
+  assert.equal(api.getState().diagnosticsOpen, false);
+  assert.equal(api.getState().exitModalOpen, false);
+  assert.equal(api.getState().lastBackResolution, "diagnostics:close");
+
+  const openExitModalEvent = dispatchKey(document, "Back", { code: "BrowserBack" });
+  const exitModal = document.querySelector("[data-stremio-remote-exit-modal='1']");
+  assert.equal(openExitModalEvent.defaultPrevented, true);
+  assert.equal(api.getState().exitModalOpen, true);
+  assert.equal(api.getState().lastBackResolution, "exit-modal:open");
+  assert.equal(exitModal.dataset.open, "true");
+});
+
+test("src/main.js Back on the exit modal behaves like Keep watching and restores focus when possible", () => {
+  const document = createMockDocument();
+  const contentButton = createMockElement("button", {
+    rect: { left: 40, top: 40, width: 160, height: 60 }
+  });
+  contentButton.textContent = "Resume";
+  document.body.appendChild(contentButton);
+
+  const { api } = bootstrapMainScript({
+    document,
+    location: {
+      pathname: "/back-restore"
+    },
+    tizen: {
+      tvinputdevice: {
+        registerKey() {}
+      }
+    }
+  });
+
+  dispatchKey(document, "ArrowRight", { code: "ArrowRight" });
+  assert.equal(document.activeElement, contentButton);
+  assert.equal(contentButton.getAttribute("data-stremio-remote-focus"), "true");
+
+  dispatchKey(document, "Back", { code: "BrowserBack" });
+  assert.equal(api.getState().exitModalOpen, true);
+  assert.equal(api.getState().lastBackResolution, "exit-modal:open");
+
+  const closeModalEvent = dispatchKey(document, "Back", { code: "BrowserBack" });
+  assert.equal(closeModalEvent.defaultPrevented, true);
+  assert.equal(api.getState().exitModalOpen, false);
+  assert.equal(api.getState().lastBackResolution, "exit-modal:keep-watching");
+  assert.equal(document.activeElement, contentButton);
+  assert.equal(contentButton.getAttribute("data-stremio-remote-focus"), "true");
+});
+
+test("src/main.js keeps modal navigation between Keep watching and End the app, and Enter on Keep watching closes the modal", () => {
+  const { document, api } = bootstrapMainScript({
+    document: createMockDocument(),
+    location: {
+      pathname: "/exit-modal-nav"
+    },
+    tizen: {
+      tvinputdevice: {
+        registerKey() {}
+      }
+    }
+  });
+
+  dispatchKey(document, "Back", { code: "BrowserBack" });
+  const { modal, keepWatchingButton, endAppButton } = primeExitModalLayout(document);
+
+  const seedFocusEvent = dispatchKey(document, "ArrowRight", { code: "ArrowRight" });
+  assert.equal(seedFocusEvent.defaultPrevented, true);
+  assert.equal(document.activeElement, keepWatchingButton);
+  assert.equal(keepWatchingButton.getAttribute("data-stremio-remote-focus"), "true");
+
+  const moveRightEvent = dispatchKey(document, "ArrowRight", { code: "ArrowRight" });
+  assert.equal(moveRightEvent.defaultPrevented, true);
+  assert.equal(document.activeElement, endAppButton);
+  assert.equal(endAppButton.getAttribute("data-stremio-remote-focus"), "true");
+
+  const stayWithinModalEvent = dispatchKey(document, "ArrowRight", { code: "ArrowRight" });
+  assert.equal(stayWithinModalEvent.defaultPrevented, false);
+  assert.equal(document.activeElement, endAppButton);
+  assert.equal(api.getState().candidateCount, 2);
+
+  const moveLeftEvent = dispatchKey(document, "ArrowLeft", { code: "ArrowLeft" });
+  assert.equal(moveLeftEvent.defaultPrevented, true);
+  assert.equal(document.activeElement, keepWatchingButton);
+
+  const keepWatchingEnterEvent = dispatchKey(document, "Enter", { code: "Enter" });
+  assert.equal(keepWatchingEnterEvent.defaultPrevented, true);
+  assert.equal(api.getState().exitModalOpen, false);
+  assert.equal(api.getState().lastConsumedAction, "exit-modal:keep-watching");
+  assert.equal(api.getState().currentFocusRole, null);
+  assert.equal(modal.dataset.open, "false");
+});
+
+test("src/main.js Enter on End the app attempts Tizen exit and records the result", () => {
+  let exitCount = 0;
+  const { document, api } = bootstrapMainScript({
+    document: createMockDocument(),
+    location: {
+      pathname: "/exit-success"
+    },
+    tizen: {
+      tvinputdevice: {
+        registerKey() {}
+      },
+      application: {
+        getCurrentApplication() {
+          return {
+            exit() {
+              exitCount += 1;
+            }
+          };
+        }
+      }
+    }
+  });
+
+  dispatchKey(document, "Back", { code: "BrowserBack" });
+  const { endAppButton } = primeExitModalLayout(document);
+
+  dispatchKey(document, "ArrowRight", { code: "ArrowRight" });
+  dispatchKey(document, "ArrowRight", { code: "ArrowRight" });
+  assert.equal(document.activeElement, endAppButton);
+
+  const enterEvent = dispatchKey(document, "Enter", { code: "Enter" });
+  const diagnosticsBody = document.querySelector("[data-stremio-remote-diagnostics-body='1']");
+  const lastExitResult = api.getState().lastExitResult;
+
+  assert.equal(enterEvent.defaultPrevented, true);
+  assert.equal(exitCount, 1);
+  assert.equal(api.getState().lastConsumedAction, "exit-modal:end-app");
+  assert.equal(lastExitResult.ok, true);
+  assert.equal(lastExitResult.message, "exit requested");
+  assert.match(diagnosticsBody.textContent, /Last exit result: ok: exit requested/);
+});
+
+test("src/main.js keeps missing or failing Tizen exit attempts non-throwing", () => {
+  const missingRuntime = bootstrapMainScript({
+    document: createMockDocument(),
+    location: {
+      pathname: "/exit-missing"
+    },
+    tizen: {
+      tvinputdevice: {
+        registerKey() {}
+      }
+    }
+  });
+
+  dispatchKey(missingRuntime.document, "Back", { code: "BrowserBack" });
+  primeExitModalLayout(missingRuntime.document);
+  dispatchKey(missingRuntime.document, "ArrowRight", { code: "ArrowRight" });
+  dispatchKey(missingRuntime.document, "ArrowRight", { code: "ArrowRight" });
+  assert.doesNotThrow(() => {
+    dispatchKey(missingRuntime.document, "Enter", { code: "Enter" });
+  });
+  assert.equal(missingRuntime.api.getState().lastExitResult.ok, false);
+  assert.equal(missingRuntime.api.getState().lastExitResult.message, "application API unavailable");
+
+  const failingRuntime = bootstrapMainScript({
+    document: createMockDocument(),
+    location: {
+      pathname: "/exit-failing"
+    },
+    tizen: {
+      tvinputdevice: {
+        registerKey() {}
+      },
+      application: {
+        getCurrentApplication() {
+          return {
+            exit() {
+              throw new Error("exit blocked");
+            }
+          };
+        }
+      }
+    }
+  });
+
+  dispatchKey(failingRuntime.document, "Back", { code: "BrowserBack" });
+  primeExitModalLayout(failingRuntime.document);
+  dispatchKey(failingRuntime.document, "ArrowRight", { code: "ArrowRight" });
+  dispatchKey(failingRuntime.document, "ArrowRight", { code: "ArrowRight" });
+  assert.doesNotThrow(() => {
+    dispatchKey(failingRuntime.document, "Enter", { code: "Enter" });
+  });
+  assert.equal(failingRuntime.api.getState().lastExitResult.ok, false);
+  assert.equal(failingRuntime.api.getState().lastExitResult.message, "exit blocked");
+});
+
+test("src/main.js Back activates a single visible dialog close control and falls through safely when ambiguous", () => {
+  const singleDocument = createMockDocument();
+  const singleDialog = createMockElement("div", {
+    rect: { left: 240, top: 120, width: 400, height: 260 }
+  });
+  singleDialog.setAttribute("role", "dialog");
+  const singleCloseButton = createMockElement("button", {
+    rect: { left: 560, top: 140, width: 48, height: 48 }
+  });
+  singleCloseButton.setAttribute("aria-label", "Close");
+  singleDialog.appendChild(singleCloseButton);
+  singleDocument.body.appendChild(singleDialog);
+
+  const singleRuntime = bootstrapMainScript({
+    document: singleDocument,
+    location: {
+      pathname: "/dialog-single-close"
+    },
+    tizen: {
+      tvinputdevice: {
+        registerKey() {}
+      }
+    }
+  });
+
+  const singleBackEvent = dispatchKey(singleDocument, "Back", { code: "BrowserBack" });
+  assert.equal(singleBackEvent.defaultPrevented, true);
+  assert.equal(singleCloseButton.clickCount, 1);
+  assert.equal(singleRuntime.api.getState().lastBackResolution, "dialog:close-affordance");
+  assert.equal(singleRuntime.api.getState().exitModalOpen, false);
+
+  const ambiguousDocument = createMockDocument();
+  const ambiguousDialog = createMockElement("div", {
+    rect: { left: 240, top: 120, width: 400, height: 260 }
+  });
+  ambiguousDialog.setAttribute("role", "dialog");
+  const firstCloseButton = createMockElement("button", {
+    rect: { left: 520, top: 140, width: 48, height: 48 }
+  });
+  firstCloseButton.textContent = "Close";
+  const secondCloseButton = createMockElement("button", {
+    rect: { left: 576, top: 140, width: 48, height: 48 }
+  });
+  secondCloseButton.setAttribute("aria-label", "Close");
+  ambiguousDialog.appendChild(firstCloseButton);
+  ambiguousDialog.appendChild(secondCloseButton);
+  ambiguousDocument.body.appendChild(ambiguousDialog);
+
+  const ambiguousRuntime = bootstrapMainScript({
+    document: ambiguousDocument,
+    location: {
+      pathname: "/dialog-ambiguous-close"
+    },
+    tizen: {
+      tvinputdevice: {
+        registerKey() {}
+      }
+    }
+  });
+
+  const ambiguousBackEvent = dispatchKey(ambiguousDocument, "Back", { code: "BrowserBack" });
+  assert.equal(ambiguousBackEvent.defaultPrevented, true);
+  assert.equal(firstCloseButton.clickCount, 0);
+  assert.equal(secondCloseButton.clickCount, 0);
+  assert.equal(ambiguousRuntime.api.getState().lastBackResolution, "exit-modal:open");
+  assert.equal(ambiguousRuntime.api.getState().exitModalOpen, true);
+});
+
+test("src/main.js uses history.back only when the current history state is eligible", () => {
+  const eligibleHistory = createMockHistory({ length: 1 });
+  const eligibleRuntime = bootstrapMainScript({
+    document: createMockDocument(),
+    location: {
+      pathname: "/history-start"
+    },
+    history: eligibleHistory,
+    tizen: {
+      tvinputdevice: {
+        registerKey() {}
+      }
+    }
+  });
+
+  eligibleHistory.length = 2;
+  const eligibleBackEvent = dispatchKey(eligibleRuntime.document, "Back", { code: "BrowserBack" });
+  assert.equal(eligibleBackEvent.defaultPrevented, true);
+  assert.equal(eligibleHistory.backCount, 1);
+  assert.equal(eligibleRuntime.api.getState().lastBackResolution, "history:back");
+  assert.equal(eligibleRuntime.api.getState().exitModalOpen, false);
+
+  const pathHistory = createMockHistory({ length: 1 });
+  const pathRuntime = bootstrapMainScript({
+    document: createMockDocument(),
+    location: {
+      pathname: "/path-start"
+    },
+    history: pathHistory,
+    tizen: {
+      tvinputdevice: {
+        registerKey() {}
+      }
+    }
+  });
+
+  pathRuntime.context.location.pathname = "/path-next";
+  dispatchKey(pathRuntime.document, "Back", { code: "BrowserBack" });
+  assert.equal(pathHistory.backCount, 1);
+  assert.equal(pathRuntime.api.getState().lastBackResolution, "history:back");
+
+  const ineligibleHistory = createMockHistory({ length: 1 });
+  const ineligibleRuntime = bootstrapMainScript({
+    document: createMockDocument(),
+    location: {
+      pathname: "/history-start"
+    },
+    history: ineligibleHistory,
+    tizen: {
+      tvinputdevice: {
+        registerKey() {}
+      }
+    }
+  });
+
+  dispatchKey(ineligibleRuntime.document, "Back", { code: "BrowserBack" });
+  assert.equal(ineligibleHistory.backCount, 0);
+  assert.equal(ineligibleRuntime.api.getState().lastBackResolution, "exit-modal:open");
+  assert.equal(ineligibleRuntime.api.getState().exitModalOpen, true);
 });
 
 test("src/main.js preserves editable-context passthrough groundwork", () => {

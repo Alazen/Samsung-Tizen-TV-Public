@@ -77,6 +77,43 @@
     "}",
     "[data-stremio-remote-diagnostics-body='1'] {",
     "  margin: 0;",
+    "}",
+    "[data-stremio-remote-exit-modal='1'] {",
+    "  position: fixed;",
+    "  inset: 0;",
+    "  z-index: 2147483646;",
+    "  display: none;",
+    "  align-items: center;",
+    "  justify-content: center;",
+    "  padding: 24px;",
+    "  background: rgba(3, 8, 14, 0.36);",
+    "}",
+    "[data-stremio-remote-exit-modal='1'][data-open='true'] {",
+    "  display: flex;",
+    "}",
+    "[data-stremio-remote-exit-dialog='1'] {",
+    "  width: min(380px, calc(100vw - 48px));",
+    "  padding: 20px;",
+    "  border: 1px solid rgba(255, 255, 255, 0.18);",
+    "  border-radius: 14px;",
+    "  background: rgba(7, 15, 24, 0.96);",
+    "  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.42);",
+    "  color: #f4fff9;",
+    "  font: 16px/1.4 system-ui, sans-serif;",
+    "}",
+    "[data-stremio-remote-exit-actions='1'] {",
+    "  display: flex;",
+    "  gap: 12px;",
+    "  margin-top: 16px;",
+    "}",
+    "[data-stremio-remote-exit-button='1'] {",
+    "  min-width: 136px;",
+    "  padding: 10px 14px;",
+    "  border: 1px solid rgba(255, 255, 255, 0.2);",
+    "  border-radius: 10px;",
+    "  background: rgba(255, 255, 255, 0.06);",
+    "  color: inherit;",
+    "  font: inherit;",
     "}"
   ].join("\n");
 
@@ -90,18 +127,26 @@
       lastKey: null,
       lastConsumedAction: null,
       diagnosticsOpen: false,
+      exitModalOpen: false,
       styleInjected: false,
       keyListenerAttached: false,
       diagnosticsPanelCreated: false,
+      exitModalCreated: false,
       domReadyHookAttached: false,
       currentFocusRole: null,
-      candidateCount: 0
+      candidateCount: 0,
+      lastExitAttempt: null,
+      lastExitResult: null,
+      lastBackResolution: null,
+      initialPath: "",
+      initialHistoryLength: null
     };
   }
 
   var runtimeApi = globalScope[NAMESPACE] || {};
   var state = createInitialState();
   var currentFocusedElement = null;
+  var previousFocusBeforeExitModal = null;
   var candidateCache = {
     timestamp: 0,
     items: []
@@ -211,6 +256,17 @@
     return copied;
   }
 
+  function copyExitResult(result) {
+    if (!result) {
+      return null;
+    }
+
+    return {
+      ok: Boolean(result.ok),
+      message: typeof result.message === "string" ? result.message : ""
+    };
+  }
+
   function getState() {
     refreshApiAvailability();
 
@@ -237,8 +293,12 @@
       } : null,
       lastConsumedAction: state.lastConsumedAction,
       diagnosticsOpen: state.diagnosticsOpen,
+      exitModalOpen: state.exitModalOpen,
       currentFocusRole: state.currentFocusRole,
-      candidateCount: state.candidateCount
+      candidateCount: state.candidateCount,
+      lastExitAttempt: state.lastExitAttempt,
+      lastExitResult: copyExitResult(state.lastExitResult),
+      lastBackResolution: state.lastBackResolution
     };
   }
 
@@ -273,6 +333,28 @@
     }
 
     return panel.querySelector("[data-stremio-remote-diagnostics-body='1']");
+  }
+
+  function findExitModal() {
+    var documentObject = getDocument();
+    if (!documentObject || typeof documentObject.querySelector !== "function") {
+      return null;
+    }
+
+    return documentObject.querySelector("[data-stremio-remote-exit-modal='1']");
+  }
+
+  function findExitDialog(modal) {
+    if (!modal || typeof modal.querySelector !== "function") {
+      return null;
+    }
+
+    return modal.querySelector("[data-stremio-remote-exit-dialog='1']");
+  }
+
+  function invalidateCandidateCache() {
+    candidateCache.items = [];
+    candidateCache.timestamp = 0;
   }
 
   function injectStylesIfPossible(cssText) {
@@ -425,6 +507,79 @@
     return panel;
   }
 
+  function ensureExitModal() {
+    var documentObject = getDocument();
+    var existingModal;
+    var modal;
+    var dialog;
+    var title;
+    var description;
+    var actions;
+    var keepWatchingButton;
+    var endAppButton;
+
+    if (!documentObject || !documentObject.body || typeof documentObject.createElement !== "function") {
+      refreshApiAvailability();
+      return null;
+    }
+
+    existingModal = findExitModal();
+    if (existingModal) {
+      state.exitModalCreated = true;
+      refreshApiAvailability();
+      return existingModal;
+    }
+
+    modal = documentObject.createElement("div");
+    setDataAttribute(modal, "data-stremio-remote-exit-modal", "1");
+    setDataAttribute(modal, "data-open", "false");
+    setAttributeIfPossible(modal, "aria-hidden", "true");
+
+    dialog = documentObject.createElement("div");
+    setDataAttribute(dialog, "data-stremio-remote-exit-dialog", "1");
+    setAttributeIfPossible(dialog, "role", "dialog");
+    setAttributeIfPossible(dialog, "aria-modal", "true");
+
+    title = documentObject.createElement("strong");
+    title.textContent = "Leave Stremio?";
+
+    description = documentObject.createElement("p");
+    description.textContent = "You can keep watching or end the app.";
+
+    actions = documentObject.createElement("div");
+    setDataAttribute(actions, "data-stremio-remote-exit-actions", "1");
+
+    keepWatchingButton = documentObject.createElement("button");
+    keepWatchingButton.textContent = "Keep watching";
+    setDataAttribute(keepWatchingButton, "data-stremio-remote-exit-button", "1");
+    setDataAttribute(keepWatchingButton, "data-stremio-remote-action", "keep-watching");
+    keepWatchingButton.onclick = function onKeepWatchingClick() {
+      closeExitModal("keep-watching");
+    };
+
+    endAppButton = documentObject.createElement("button");
+    endAppButton.textContent = "End the app";
+    setDataAttribute(endAppButton, "data-stremio-remote-exit-button", "1");
+    setDataAttribute(endAppButton, "data-stremio-remote-action", "end-app");
+    endAppButton.onclick = function onEndAppClick() {
+      state.lastConsumedAction = "exit-modal:end-app";
+      attemptAppExit();
+      renderDiagnostics();
+    };
+
+    actions.appendChild(keepWatchingButton);
+    actions.appendChild(endAppButton);
+    dialog.appendChild(title);
+    dialog.appendChild(description);
+    dialog.appendChild(actions);
+    modal.appendChild(dialog);
+    documentObject.body.appendChild(modal);
+
+    state.exitModalCreated = true;
+    refreshApiAvailability();
+    return modal;
+  }
+
   function formatKeyList(list) {
     return list.length ? list.join(", ") : "(none)";
   }
@@ -450,6 +605,9 @@
     var lastKey = snapshot.lastKey
       ? snapshot.lastKey.key + (snapshot.lastKey.code ? " (" + snapshot.lastKey.code + ")" : "")
       : "(none)";
+    var exitResult = snapshot.lastExitResult
+      ? (snapshot.lastExitResult.ok ? "ok: " : "failed: ") + snapshot.lastExitResult.message
+      : "(none)";
 
     return [
       "Stremio Web TV Remote Diagnostics",
@@ -457,8 +615,11 @@
       "Path: " + (getLocationPath() || "(unavailable)"),
       "Last key: " + lastKey,
       "Last action: " + (snapshot.lastConsumedAction || "(none)"),
+      "Exit modal open: " + String(snapshot.exitModalOpen),
       "Current focus role: " + (snapshot.currentFocusRole || "(none)"),
       "Candidate count: " + String(snapshot.candidateCount),
+      "Last Back resolution: " + (snapshot.lastBackResolution || "(none)"),
+      "Last exit result: " + exitResult,
       "Registered keys: " + formatKeyList(snapshot.registeredKeys),
       "Failed keys: " + formatFailedKeys(snapshot.failedKeys),
       "APIs: " +
@@ -475,6 +636,7 @@
 
   function renderDiagnostics() {
     var panel = ensureDiagnosticsPanel();
+    var modal = ensureExitModal();
     var panelBody;
 
     if (!panel) {
@@ -489,6 +651,11 @@
       panelBody.textContent = buildDiagnosticsText();
     } else {
       panel.textContent = buildDiagnosticsText();
+    }
+
+    if (modal) {
+      setDataAttribute(modal, "data-open", state.exitModalOpen ? "true" : "false");
+      setAttributeIfPossible(modal, "aria-hidden", state.exitModalOpen ? "false" : "true");
     }
 
     return true;
@@ -609,7 +776,11 @@
     while (current) {
       if (current.dataset && (
         current.dataset.stremioRemoteDiagnosticsPanel === "1" ||
-        current.dataset.stremioRemoteDiagnosticsBody === "1"
+        current.dataset.stremioRemoteDiagnosticsBody === "1" ||
+        current.dataset.stremioRemoteExitModal === "1" ||
+        current.dataset.stremioRemoteExitDialog === "1" ||
+        current.dataset.stremioRemoteExitActions === "1" ||
+        current.dataset.stremioRemoteExitButton === "1"
       )) {
         return true;
       }
@@ -617,6 +788,14 @@
     }
 
     return false;
+  }
+
+  function isExitModalButton(element) {
+    return Boolean(
+      element &&
+      element.dataset &&
+      element.dataset.stremioRemoteExitButton === "1"
+    );
   }
 
   function getNonNegativeTabIndex(element) {
@@ -732,11 +911,12 @@
     return false;
   }
 
-  function isElementVisible(element) {
+  function isElementVisible(element, options) {
     var rect = getElementRect(element);
     var computedStyle = getComputedStyleSafe(element);
+    var allowModuleOwned = Boolean(options && options.allowModuleOwned);
 
-    if (!element || isModuleOwnedElement(element)) {
+    if (!element || (!allowModuleOwned && isModuleOwnedElement(element))) {
       return false;
     }
     if (element.hidden === true) {
@@ -761,6 +941,135 @@
     return true;
   }
 
+  function getElementText(element) {
+    return element && typeof element.textContent === "string"
+      ? element.textContent.toLowerCase()
+      : "";
+  }
+
+  function getElementNameMap(element) {
+    return {
+      role: String(getElementAttribute(element, "role") || "").toLowerCase(),
+      ariaLabel: String(getElementAttribute(element, "aria-label") || "").toLowerCase(),
+      title: String(getElementAttribute(element, "title") || "").toLowerCase(),
+      className: typeof element.className === "string" ? element.className.toLowerCase() : "",
+      id: typeof element.id === "string" ? element.id.toLowerCase() : "",
+      text: getElementText(element)
+    };
+  }
+
+  function containsAny(value, terms) {
+    var i;
+
+    if (!value) {
+      return false;
+    }
+
+    for (i = 0; i < terms.length; i += 1) {
+      if (value.indexOf(terms[i]) >= 0) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  function isDialogLikeElement(element) {
+    var names = getElementNameMap(element);
+    var ariaModal = String(getElementAttribute(element, "aria-modal") || "").toLowerCase();
+
+    return Boolean(
+      names.role === "dialog" ||
+      ariaModal === "true" ||
+      containsAny(names.className, ["dialog", "modal", "overlay"]) ||
+      containsAny(names.id, ["dialog", "modal", "overlay"])
+    );
+  }
+
+  function isSafeCloseBackAffordance(element) {
+    var names;
+
+    if (!isGenericCandidateElement(element) || !isElementVisible(element)) {
+      return false;
+    }
+
+    names = getElementNameMap(element);
+    return Boolean(
+      containsAny(names.ariaLabel, ["close", "back"]) ||
+      containsAny(names.title, ["close", "back"]) ||
+      containsAny(names.className, ["close", "back"]) ||
+      containsAny(names.id, ["close", "back"]) ||
+      names.text === "close" ||
+      names.text === "back"
+    );
+  }
+
+  function findActiveDialogCloseAffordance() {
+    var documentObject = getDocument();
+    var elements = [];
+    var dialogContainers = [];
+    var activeDialog;
+    var controls = [];
+    var i;
+    var j;
+
+    if (!documentObject || !documentObject.body) {
+      return null;
+    }
+
+    collectTreeElements(documentObject.body, elements);
+    for (i = 0; i < elements.length; i += 1) {
+      if (isDialogLikeElement(elements[i]) && isElementVisible(elements[i])) {
+        dialogContainers.push(elements[i]);
+      }
+    }
+
+    if (!dialogContainers.length) {
+      return null;
+    }
+
+    activeDialog = dialogContainers[dialogContainers.length - 1];
+    collectTreeElements(activeDialog, elements = []);
+    for (j = 0; j < elements.length; j += 1) {
+      if (isSafeCloseBackAffordance(elements[j])) {
+        controls.push(elements[j]);
+      }
+    }
+
+    return controls.length === 1 ? controls[0] : null;
+  }
+
+  function collectExitModalCandidates() {
+    var modal = ensureExitModal();
+    var dialog = findExitDialog(modal);
+    var elements = [];
+    var candidates = [];
+    var i;
+
+    if (!modal || !dialog) {
+      return [];
+    }
+
+    collectTreeElements(dialog, elements);
+    for (i = 0; i < elements.length; i += 1) {
+      if (!isExitModalButton(elements[i])) {
+        continue;
+      }
+      if (!isElementVisible(elements[i], { allowModuleOwned: true })) {
+        continue;
+      }
+
+      candidates.push({
+        element: elements[i],
+        role: String(getElementAttribute(elements[i], "data-stremio-remote-action") || "exit-modal-action"),
+        rect: getElementRect(elements[i]),
+        order: candidates.length
+      });
+    }
+
+    return candidates;
+  }
+
   function collectCandidates(forceRefresh) {
     var documentObject = getDocument();
     var elements = [];
@@ -773,6 +1082,13 @@
     var activeElement;
 
     if (!forceRefresh && candidateCache.items.length && (now() - candidateCache.timestamp) < candidateCacheDurationMs) {
+      state.candidateCount = candidateCache.items.length;
+      return candidateCache.items;
+    }
+
+    if (state.exitModalOpen) {
+      candidateCache.items = collectExitModalCandidates();
+      candidateCache.timestamp = now();
       state.candidateCount = candidateCache.items.length;
       return candidateCache.items;
     }
@@ -827,6 +1143,28 @@
 
     currentFocusedElement = null;
     state.currentFocusRole = null;
+  }
+
+  function restorePreviousFocusIfPossible() {
+    var candidates;
+    var candidate;
+
+    if (!previousFocusBeforeExitModal) {
+      clearCurrentFocus();
+      return false;
+    }
+
+    candidates = collectCandidates(true);
+    candidate = findCandidateByElement(candidates, previousFocusBeforeExitModal);
+    previousFocusBeforeExitModal = null;
+
+    if (!candidate) {
+      clearCurrentFocus();
+      return false;
+    }
+
+    applyFocus(candidate);
+    return true;
   }
 
   function findCandidateByElement(candidates, element) {
@@ -1036,9 +1374,148 @@
     return true;
   }
 
+  function setBackResolution(resolution) {
+    state.lastBackResolution = resolution;
+    state.lastConsumedAction = resolution;
+  }
+
+  function openExitModal() {
+    var candidates;
+
+    previousFocusBeforeExitModal = currentFocusedElement;
+    state.exitModalOpen = true;
+    invalidateCandidateCache();
+    renderDiagnostics();
+
+    candidates = collectCandidates(true);
+    if (candidates.length) {
+      applyFocus(candidates[0]);
+    } else {
+      clearCurrentFocus();
+    }
+
+    setBackResolution("exit-modal:open");
+    renderDiagnostics();
+    return true;
+  }
+
+  function closeExitModal(reason) {
+    state.exitModalOpen = false;
+    invalidateCandidateCache();
+
+    if (reason === "back") {
+      setBackResolution("exit-modal:keep-watching");
+    } else {
+      state.lastConsumedAction = "exit-modal:keep-watching";
+    }
+
+    restorePreviousFocusIfPossible();
+    renderDiagnostics();
+    return true;
+  }
+
+  function canUseHistoryBack() {
+    var historyObject = globalScope && globalScope.history;
+    var historyLength = historyObject && typeof historyObject.length === "number"
+      ? historyObject.length
+      : null;
+    var currentPath = getLocationPath();
+
+    if (!historyObject || typeof historyObject.back !== "function") {
+      return false;
+    }
+
+    if (historyLength !== null && state.initialHistoryLength !== null && historyLength > state.initialHistoryLength) {
+      return true;
+    }
+
+    if (currentPath && state.initialPath && currentPath !== state.initialPath) {
+      return true;
+    }
+
+    return false;
+  }
+
+  function attemptAppExit() {
+    var tizenObject = globalScope && globalScope.tizen;
+    var applicationApi = tizenObject && tizenObject.application;
+    var app;
+
+    state.lastExitAttempt = now();
+
+    if (!applicationApi || typeof applicationApi.getCurrentApplication !== "function") {
+      state.lastExitResult = {
+        ok: false,
+        message: "application API unavailable"
+      };
+      return false;
+    }
+
+    try {
+      app = applicationApi.getCurrentApplication();
+      if (!app || typeof app.exit !== "function") {
+        state.lastExitResult = {
+          ok: false,
+          message: "current application exit unavailable"
+        };
+        return false;
+      }
+
+      state.lastExitResult = {
+        ok: true,
+        message: "exit requested"
+      };
+      app.exit();
+      return true;
+    } catch (error) {
+      state.lastExitResult = {
+        ok: false,
+        message: error && error.message ? error.message : String(error)
+      };
+      return false;
+    }
+  }
+
+  function handleBackAction() {
+    var safeCloseAffordance;
+
+    if (state.diagnosticsOpen) {
+      setDiagnosticsOpen(false);
+      state.lastBackResolution = "diagnostics:close";
+      renderDiagnostics();
+      return true;
+    }
+
+    if (state.exitModalOpen) {
+      closeExitModal("back");
+      return true;
+    }
+
+    safeCloseAffordance = findActiveDialogCloseAffordance();
+    if (safeCloseAffordance && typeof safeCloseAffordance.click === "function") {
+      safeCloseAffordance.click();
+      setBackResolution("dialog:close-affordance");
+      invalidateCandidateCache();
+      renderDiagnostics();
+      return true;
+    }
+
+    if (canUseHistoryBack()) {
+      globalScope.history.back();
+      setBackResolution("history:back");
+      invalidateCandidateCache();
+      clearCurrentFocus();
+      renderDiagnostics();
+      return true;
+    }
+
+    return openExitModal();
+  }
+
   function activateFocusedCandidate() {
     var candidates = collectCandidates(false);
     var currentCandidate = findCandidateByElement(candidates, currentFocusedElement);
+    var previousAction = state.lastConsumedAction;
 
     if (!currentCandidate) {
       return false;
@@ -1046,7 +1523,9 @@
 
     if (typeof currentCandidate.element.click === "function") {
       currentCandidate.element.click();
-      state.lastConsumedAction = "activate:" + currentCandidate.role;
+      if (state.lastConsumedAction === previousAction) {
+        state.lastConsumedAction = "activate:" + currentCandidate.role;
+      }
       return true;
     }
 
@@ -1064,6 +1543,13 @@
     }
 
     return false;
+  }
+
+  function isBackKey(lastKey) {
+    return Boolean(
+      lastKey &&
+      (lastKey.key === "Back" || lastKey.code === "BrowserBack")
+    );
   }
 
   function attachKeyListener() {
@@ -1094,15 +1580,16 @@
       return;
     }
 
-    if (state.diagnosticsOpen && (state.lastKey.key === "Back" || state.lastKey.code === "BrowserBack")) {
-      if (event && typeof event.preventDefault === "function") {
-        event.preventDefault();
+    if (isBackKey(state.lastKey)) {
+      if (handleBackAction()) {
+        if (event && typeof event.preventDefault === "function") {
+          event.preventDefault();
+        }
+        if (event && typeof event.stopPropagation === "function") {
+          event.stopPropagation();
+        }
       }
-      if (event && typeof event.stopPropagation === "function") {
-        event.stopPropagation();
-      }
-
-      setDiagnosticsOpen(false);
+      renderDiagnostics();
       return;
     }
 
@@ -1148,6 +1635,12 @@
   function init() {
     if (!state.initTime) {
       state.initTime = now();
+    }
+    if (!state.initialPath) {
+      state.initialPath = getLocationPath();
+    }
+    if (state.initialHistoryLength === null && globalScope && globalScope.history && typeof globalScope.history.length === "number") {
+      state.initialHistoryLength = globalScope.history.length;
     }
 
     refreshApiAvailability();
