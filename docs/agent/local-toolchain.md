@@ -95,6 +95,10 @@ $env:Path = "E:\tizen-studio\tools;$env:Path"
   - Emulator DUID captured in the distributor certificate: `XTCYJYZXZBZVK`.
   - The certificate profile was created successfully and set active.
   - `Permit to install application` should be retried after the profile is active.
+- DevTools/Web Inspector validation on the emulator app:
+  - Console output showed the app startup log (`init() called`).
+  - A manual `console.log('Codex TV debug path works')` appeared in DevTools and confirmed the debug bridge.
+  - The browser warning about pasting into DevTools is expected and does not block the workflow.
 - Remaining Task 2 acceptance should be completed in Tizen Studio under the real desktop user context:
   - Create a Samsung TV profile web project with the Basic Project template, or use an existing Samsung TV web project.
   - Run it with `Run As > Tizen Web Application (Samsung TV)` on `T-samsung-10.0-x86_64`.

@@ -29,6 +29,9 @@ Task 2 progress:
   account + 2FA, creating the Samsung certificate profile, and adding the
   emulator DUID `XTCYJYZXZBZVK`. The active emulator profile is
   `EmulatorTVProfile`.
+- DevTools/Web Inspector is working against the emulator app. Console output
+  confirmed both the startup log path (`init() called`) and a manual
+  `console.log('Codex TV debug path works')` round-trip.
 - Remaining acceptance: configure/debug the Samsung TV web app on the Tizen
   10.0 TV emulator, confirm Log View runtime messages, and confirm the
   JavaScript Log Console/Web Inspector debug path. Tizen 8.0 compatibility
