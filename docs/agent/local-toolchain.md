@@ -78,11 +78,28 @@ $env:Path = "E:\tizen-studio\tools;$env:Path"
 - A disposable Samsung TV web runtime-check app under `.agent-tmp` built successfully with `tizen build-web` and packaged successfully with `tizen package -t wgt -s MyTVProfile`.
 - `tizen install -n "Codex TV Runtime Check.wgt" -t emulator-26101` failed with `There is no emulator-26101 target`, even though `sdb devices` listed the emulator.
 - `sdb -s emulator-26101 install` pushed the WGT but ended with `closed`; direct pushes to common target paths also reported `You cannot push files to this path`.
+- Tizen Studio Package Manager needed both TV extension pieces for project creation:
+  - `TV Extensions-10.0 > Web app. development`
+  - `TV Extensions Tools > Web app. tools`
+- The new-project wizard showed only generic Tizen 8.0 emulator profiles for Tizen 8.0; Samsung TV project creation used `TV-samsung v10.0`.
+- In Tizen Studio, a Samsung TV Basic Project named `CodexTvRuntimeCheck` launched successfully on the emulator only with `Run As > Tizen Web Application (Samsung TV)`.
+- `Run As > Tizen Web Application` failed during package install with `Tizen Web Application install failed. Please try again later.` Do not use the generic run profile for the Samsung TV emulator.
+- `Debug As > Tizen Web Application` did not work directly; debugging still needs an explicit debug configuration path for the Samsung TV emulator.
+- Certificate Manager workflow that finally exposed the DUID selector:
+  - Update the Certificate Manager through Package Manager before creating the profile.
+  - Sign in with a Samsung account and complete 2FA inside Tizen Studio.
+  - Create a Samsung certificate profile, then add the connected emulator DUID.
+  - Active emulator profile created: `EmulatorTVProfile`.
+  - Author key file location: `E:\tizen-studio-data\keystore\author\EmulatorTVProfile.p12`.
+  - Distributor/profile location shown by Tizen Studio: `C:\Users\gabip\SamsungCertificate\EmulatorTVProfile`.
+  - Emulator DUID captured in the distributor certificate: `XTCYJYZXZBZVK`.
+  - The certificate profile was created successfully and set active.
+  - `Permit to install application` should be retried after the profile is active.
 - Remaining Task 2 acceptance should be completed in Tizen Studio under the real desktop user context:
   - Create a Samsung TV profile web project with the Basic Project template, or use an existing Samsung TV web project.
-  - Run it with `Run As > Tizen Web Application` on `T-samsung-10.0-x86_64`.
+  - Run it with `Run As > Tizen Web Application (Samsung TV)` on `T-samsung-10.0-x86_64`.
   - Open `Window > Show View > Log` and confirm runtime messages appear.
-  - Launch with `Debug As > Tizen Web Application`; the JavaScript Log Console and Web Inspector path are expected in debug mode.
+  - Configure debug for the Samsung TV emulator; the JavaScript Log Console and Web Inspector path are expected in debug mode.
   - Record that Tizen 8.0 final compatibility must be validated on the real Samsung TV, not the local generic Tizen 8.0 emulator.
 
 ## Tizen CLI log permissions

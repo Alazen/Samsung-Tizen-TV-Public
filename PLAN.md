@@ -19,10 +19,20 @@ Task 2 progress:
   emulator image is generic `tizen`, not Samsung TV. The only local Samsung TV
   emulator is Tizen 10.0 (`tv-samsung-10.0-x86_64`), so use it for local TV
   runtime/toolchain debugging only.
-- Remaining acceptance: run or debug a basic Samsung TV web app from Tizen
-  Studio on the Tizen 10.0 TV emulator, confirm Log View runtime messages, and
-  confirm the JavaScript Log Console/Web Inspector debug path. Tizen 8.0
-  compatibility remains a real-device acceptance item.
+- A Samsung TV Basic Project named `CodexTvRuntimeCheck` was created in Tizen
+  Studio and launched successfully on the TV emulator with `Run As > Tizen Web
+  Application (Samsung TV)`.
+- `Run As > Tizen Web Application` failed during package install and must not
+  be used for this TV emulator path.
+- Certificate Manager setup for the emulator now works after updating the
+  Certificate Manager through Package Manager, signing in with a Samsung
+  account + 2FA, creating the Samsung certificate profile, and adding the
+  emulator DUID `XTCYJYZXZBZVK`. The active emulator profile is
+  `EmulatorTVProfile`.
+- Remaining acceptance: configure/debug the Samsung TV web app on the Tizen
+  10.0 TV emulator, confirm Log View runtime messages, and confirm the
+  JavaScript Log Console/Web Inspector debug path. Tizen 8.0 compatibility
+  remains a real-device acceptance item.
 
 ## Goal
 
