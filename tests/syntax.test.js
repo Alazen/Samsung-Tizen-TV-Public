@@ -846,6 +846,43 @@ test("src/main.js Back activates a single visible dialog close control and falls
   assert.equal(ambiguousRuntime.api.getState().exitModalOpen, true);
 });
 
+test("src/main.js ignores dialog close controls inside hidden ancestors", () => {
+  const document = createMockDocument();
+  const hiddenContainer = createMockElement("div", {
+    hidden: true,
+    rect: { left: 0, top: 0, width: 1280, height: 720 }
+  });
+  const hiddenDialog = createMockElement("div", {
+    rect: { left: 240, top: 120, width: 400, height: 260 }
+  });
+  hiddenDialog.setAttribute("role", "dialog");
+  const hiddenCloseButton = createMockElement("button", {
+    rect: { left: 560, top: 140, width: 48, height: 48 }
+  });
+  hiddenCloseButton.setAttribute("aria-label", "Close");
+  hiddenDialog.appendChild(hiddenCloseButton);
+  hiddenContainer.appendChild(hiddenDialog);
+  document.body.appendChild(hiddenContainer);
+
+  const runtime = bootstrapMainScript({
+    document,
+    location: {
+      pathname: "/dialog-hidden-ancestor"
+    },
+    tizen: {
+      tvinputdevice: {
+        registerKey() {}
+      }
+    }
+  });
+
+  const backEvent = dispatchKey(document, "Back", { code: "BrowserBack" });
+  assert.equal(backEvent.defaultPrevented, true);
+  assert.equal(hiddenCloseButton.clickCount, 0);
+  assert.equal(runtime.api.getState().lastBackResolution, "exit-modal:open");
+  assert.equal(runtime.api.getState().exitModalOpen, true);
+});
+
 test("src/main.js uses history.back only when the current history state is eligible", () => {
   const eligibleHistory = createMockHistory({ length: 1 });
   const eligibleRuntime = bootstrapMainScript({

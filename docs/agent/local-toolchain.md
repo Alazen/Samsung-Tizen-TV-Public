@@ -75,7 +75,7 @@ $env:Path = "E:\tizen-studio\tools;$env:Path"
 - User confirmed in Emulator Manager that the available Tizen 8.0 images are generic `HD1080 Tizen`; the available Samsung TV emulator is `HD1080 TV` on `tv-samsung-10.0-x86_64`.
 - Outside the sandbox, `E:\tizen-studio\tools\ide\bin\tizen.bat version` returned `Tizen CLI 2.5.25` without access-denied errors.
 - Outside the sandbox, `tizen security-profiles list` loaded `E:\tizen-studio-data\profile\profiles.xml` and showed active profile `MyTVProfile`.
-- A disposable Samsung TV web runtime-check app under `.agent-tmp` built successfully with `tizen build-web` and packaged successfully with `tizen package -t wgt -s MyTVProfile`.
+- A one-off Samsung TV web runtime-check app was used during investigation, but the documented Task 3 harness path is now the repo-tracked `CodexTvRuntimeCheck` project.
 - `tizen install -n "Codex TV Runtime Check.wgt" -t emulator-26101` failed with `There is no emulator-26101 target`, even though `sdb devices` listed the emulator.
 - `sdb -s emulator-26101 install` pushed the WGT but ended with `closed`; direct pushes to common target paths also reported `You cannot push files to this path`.
 - Tizen Studio Package Manager needed both TV extension pieces for project creation:
@@ -108,19 +108,18 @@ $env:Path = "E:\tizen-studio\tools;$env:Path"
 
 ## Task 3 emulator debug harness recipe
 
-- Primary harness decision: use the existing external Samsung TV Basic Project
+- Primary harness decision: use the repo-tracked Samsung TV Basic Project
   `CodexTvRuntimeCheck` as the default emulator debug harness.
 - Preferred repeatable debug command:
   `E:\tizen-studio\tools\tizen-core\tz.exe run -d -e emulator-26101 -w <project-path>`.
-- Required `-w` value: absolute path to the external `CodexTvRuntimeCheck`
+- Required `-w` value: absolute path to the checked-in `CodexTvRuntimeCheck`
   project root (the folder containing `config.xml`).
-- Fallback when that external path is unavailable: use a disposable untracked
-  harness under `.agent-tmp`.
+- Generated outputs such as `Debug/` folders and `.wgt` packages remain
+  non-source artifacts and must stay uncommitted.
 - Harness scope is intentionally minimal and debug-only: enough DOM/runtime
   surface to verify keydown events, style injection behavior, and Tizen API
   availability.
-- This harness is not product architecture and should not be committed as
-  product source.
+- The harness lives in repo-tracked source; keep the documented path there.
 
 Required evidence to record for this recipe:
 

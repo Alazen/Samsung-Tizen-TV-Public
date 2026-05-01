@@ -61,9 +61,8 @@ Record the final Task 3 emulator debug harness decision and residual limitations
 Record one of:
 
 ```text
-Decision A: Use the external Samsung TV Basic Project as the preferred debug harness.
-Decision B: Use a disposable untracked `.agent-tmp` harness as the preferred debug harness.
-Decision C: Debug harness is blocked pending emulator/toolchain/user-context access.
+Decision A: Use the repo-tracked `CodexTvRuntimeCheck` project as the preferred debug harness.
+Decision B: Debug harness is blocked pending emulator/toolchain/user-context access.
 ```
 
 ## Documentation obligations
@@ -73,6 +72,7 @@ Decision C: Debug harness is blocked pending emulator/toolchain/user-context acc
 - Must update `docs/validation/emulator-validation.md` if the final procedure changes.
 - Must update the Task 3 ExecPlan status if complete or blocked.
 - Must update `PLAN.md` current status if Task 3 is completed or blocked.
+- Generated `Debug/` folders and `.wgt` packages remain non-source artifacts.
 
 ## Validation
 

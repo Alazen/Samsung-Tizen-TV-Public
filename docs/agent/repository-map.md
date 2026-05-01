@@ -13,6 +13,7 @@
 - `docs/agent/exec-plans/active/`: current implementation plans.
 - `docs/agent/decision-log.md`: durable execution decisions.
 - `docs/agent/known-risks.md`: active risks and mitigations.
+- `docs/agent/local-toolchain.md`: local toolchain notes, including the repo-tracked `CodexTvRuntimeCheck` harness boundary and generated-output rules.
 
 ## Skills
 - `.agents/skills/tizen-doc-lookup/SKILL.md`: official-doc lookup workflow for Tizen TV tasks.
@@ -20,4 +21,4 @@
 
 ## Edit boundaries (default)
 - Allowed only when a task explicitly includes the path.
-- Treat generated outputs (`target/`, `*.exe`, `*.zip`, `*.log`, caches, temp files) as non-source artifacts; do not commit by default.
+- Treat generated outputs (`target/`, `Debug/`, `*.exe`, `*.zip`, `*.wgt`, `*.log`, caches, temp files) as non-source artifacts; do not commit by default.

@@ -9,7 +9,7 @@
 
 ## Objective
 
-Validate the preferred repeatable emulator debug command path for the Samsung TV debug harness.
+Validate the preferred repeatable emulator debug command path for the repo-tracked Samsung TV debug harness.
 
 ## Required context
 
@@ -39,7 +39,7 @@ Validate the preferred repeatable emulator debug command path for the Samsung TV
 - `package.json`
 - `package-lock.json`
 - `docs/vendor/`
-- Committed temporary harness files
+- Committed generated `Debug/` or `.wgt` outputs
 - `target/`
 - `*.wgt`
 - `*.zip`
@@ -51,7 +51,7 @@ Validate the preferred repeatable emulator debug command path for the Samsung TV
 
 - Validate debug path only.
 - Do not implement runtime behavior.
-- Do not commit disposable harness files.
+- Do not commit generated `Debug/` or `.wgt` outputs.
 - Do not modify vendored docs.
 - Do not expose certificate passwords, signing secrets, or Samsung account details.
 
@@ -63,7 +63,7 @@ Use the current documented preferred path:
 E:\tizen-studio\tools\tizen-core\tz.exe run -d -e emulator-26101 -w <project-path>
 ```
 
-Where `<project-path>` is the absolute path to the external Samsung TV Basic Project folder containing `config.xml`.
+Where `<project-path>` is the absolute path to the repo-tracked `CodexTvRuntimeCheck` project folder containing `config.xml`.
 
 ## Evidence to capture
 

@@ -36,14 +36,13 @@ description: Execute one bounded Stremio TaskCard end to end using allowed-file 
 ## Emulator Debug Harness
 Use this when a bounded TaskCard reaches emulator-debug validation.
 
-1. Create a disposable untracked harness under `.agent-tmp\<task-name>-tv-debug-harness\`.
-2. Copy the current repo runtime bootstrap into the harness app script slot before packing.
-3. If optional remote key registration is under validation, ensure `http://tizen.org/privilege/tv.inputdevice` is present in the temporary harness `config.xml`.
-4. Package with `E:\tizen-studio\tools\tizen-core\tz.exe pack -w <harness> -t wgt -s EmulatorTVProfile`.
-5. Install with `E:\tizen-studio\tools\tizen-core\tz.exe install -e emulator-26101 -w <harness>`.
-6. Run with `E:\tizen-studio\tools\tizen-core\tz.exe run -d -e emulator-26101 -w <harness>`.
-7. Capture evidence for diagnostics panel presence, key event names and codes, `window.tizen` / `tizen.tvinputdevice` / `tizen.application` availability, registered versus failed optional keys, and Web Inspector or Log Console attachment in debug mode.
-8. Remove or replace the harness freely; do not commit generated harness files or WGTs.
+1. Use the checked-in `CodexTvRuntimeCheck` project root as the harness path.
+2. If optional remote key registration is under validation, ensure `http://tizen.org/privilege/tv.inputdevice` is present in the harness `config.xml`.
+3. Package with `E:\tizen-studio\tools\tizen-core\tz.exe pack -w <harness> -t wgt -s EmulatorTVProfile`.
+4. Install with `E:\tizen-studio\tools\tizen-core\tz.exe install -e emulator-26101 -w <harness>`.
+5. Run with `E:\tizen-studio\tools\tizen-core\tz.exe run -d -e emulator-26101 -w <harness>`.
+6. Capture evidence for diagnostics panel presence, key event names and codes, `window.tizen` / `tizen.tvinputdevice` / `tizen.application` availability, registered versus failed optional keys, and Web Inspector or Log Console attachment in debug mode.
+7. Generated `Debug/` folders and `.wgt` packages are non-source artifacts; do not commit them.
 
 ## Safety rules
 - Do not revert unrelated edits from other workers.

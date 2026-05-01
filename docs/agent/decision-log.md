@@ -12,6 +12,7 @@
 - Decision: require pre-commit status/stat checks and generated-artifact refusal by default.
 - Rationale: prevent accidental commits of temporary/build outputs in multi-worker flows.
 
-## 2026-04-30 - Emulator debug harness stays external and disposable
-- Decision: keep the emulator debug harness outside the product surface; use the existing `CodexTvRuntimeCheck` project as the primary path and `.agent-tmp` as the fallback workspace.
-- Rationale: preserve a clean repo boundary for Task 3 while still allowing repeatable local emulator debugging without turning the harness into product architecture.
+## 2026-04-30 - Emulator debug harness is repo-tracked source
+- Decision: make the checked-in `CodexTvRuntimeCheck` project the authoritative Samsung TV debug harness path for Task 3 validation.
+- Generated outputs such as `Debug/` folders and `.wgt` packages remain non-source artifacts and stay untracked.
+- Rationale: keep emulator validation repeatable inside the repository while preserving the source/artifact boundary.

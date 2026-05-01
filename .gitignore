@@ -16,3 +16,4 @@ node_modules/
 .externalToolBuilders/
 .rds_delta
 .sdk_delta.info
+harness/**/Debug/
