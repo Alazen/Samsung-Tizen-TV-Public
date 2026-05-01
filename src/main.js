@@ -1351,15 +1351,33 @@
     return bestCandidate;
   }
 
-  function pickDomOrderFallback(candidates, currentCandidate, direction) {
-    var step = (direction === "ArrowRight" || direction === "ArrowDown") ? 1 : -1;
-    var nextIndex = currentCandidate.order + step;
+  function pickSeedCandidate(candidates, direction) {
+    var bestCandidate = null;
+    var bestScore = Infinity;
+    var i;
+    var candidate;
+    var score;
 
-    if (nextIndex < 0 || nextIndex >= candidates.length) {
-      return null;
+    for (i = 0; i < candidates.length; i += 1) {
+      candidate = candidates[i];
+
+      if (direction === "ArrowLeft") {
+        score = (-candidate.rect.right * 10000) + (candidate.rect.top * 100) + candidate.order;
+      } else if (direction === "ArrowUp") {
+        score = (-candidate.rect.bottom * 10000) + (candidate.rect.left * 100) + candidate.order;
+      } else if (direction === "ArrowDown") {
+        score = (candidate.rect.top * 10000) + (candidate.rect.left * 100) + candidate.order;
+      } else {
+        score = (candidate.rect.left * 10000) + (candidate.rect.top * 100) + candidate.order;
+      }
+
+      if (score < bestScore) {
+        bestScore = score;
+        bestCandidate = candidate;
+      }
     }
 
-    return candidates[nextIndex];
+    return bestCandidate;
   }
 
   function moveFocus(direction) {
@@ -1375,16 +1393,13 @@
 
     currentCandidate = findCandidateByElement(candidates, currentFocusedElement);
     if (!currentCandidate) {
-      applyFocus(candidates[0]);
-      state.lastConsumedAction = "focus:seed:" + candidates[0].role;
+      nextCandidate = pickSeedCandidate(candidates, direction);
+      applyFocus(nextCandidate);
+      state.lastConsumedAction = "focus:seed:" + nextCandidate.role;
       return true;
     }
 
     nextCandidate = pickDirectionalCandidate(candidates, currentCandidate, direction);
-    if (!nextCandidate) {
-      nextCandidate = pickDomOrderFallback(candidates, currentCandidate, direction);
-    }
-
     if (!nextCandidate) {
       return false;
     }

@@ -1245,9 +1245,15 @@ test("src/main.js preserves editable-context passthrough for input, textarea, se
   }
 });
 
-test("src/main.js discovers visible navigation candidates, excludes diagnostics internals, and seeds focus from the first arrow key", () => {
+test("src/main.js excludes visible module-owned UI and seeds the best content candidate for the requested direction", () => {
   const code = fs.readFileSync(mainScriptPath, "utf8");
   const document = createMockDocument();
+  const domOrderTrapCandidate = createMockElement("button", {
+    rect: { left: 320, top: 40, width: 160, height: 60 }
+  });
+  domOrderTrapCandidate.setAttribute("role", "button");
+  domOrderTrapCandidate.setAttribute("data-test-id", "dom-order-trap");
+
   const visibleCandidate = createMockElement("button", {
     rect: { left: 40, top: 40, width: 160, height: 60 }
   });
@@ -1274,6 +1280,7 @@ test("src/main.js discovers visible navigation candidates, excludes diagnostics 
   zeroSizeCandidate.setAttribute("role", "button");
   zeroSizeCandidate.setAttribute("data-test-id", "zero-size");
 
+  document.body.appendChild(domOrderTrapCandidate);
   document.body.appendChild(visibleCandidate);
   document.body.appendChild(hiddenCandidate);
   document.body.appendChild(disabledCandidate);
@@ -1299,12 +1306,18 @@ test("src/main.js discovers visible navigation candidates, excludes diagnostics 
 
   const panel = document.querySelector("[data-stremio-remote-diagnostics-panel='1']");
   const panelBody = panel.querySelector("[data-stremio-remote-diagnostics-body='1']");
+  panel.setAttribute("aria-hidden", "false");
+  panel.setAttribute("data-open", "true");
   const diagnosticsButton = createMockElement("button", {
     rect: { left: 20, top: 20, width: 180, height: 48 }
   });
   diagnosticsButton.setAttribute("role", "button");
   diagnosticsButton.setAttribute("data-test-id", "diagnostics-action");
   panelBody.appendChild(diagnosticsButton);
+
+  const exitModal = document.querySelector("[data-stremio-remote-exit-modal='1']");
+  exitModal.setAttribute("aria-hidden", "false");
+  primeExitModalLayout(document);
 
   const seedEvent = createKeyEvent("ArrowRight", { code: "ArrowRight" });
   document.dispatch("keydown", seedEvent);
@@ -1315,17 +1328,18 @@ test("src/main.js discovers visible navigation candidates, excludes diagnostics 
   assert.equal(seedEvent.defaultPrevented, true);
   assert.equal(document.activeElement, visibleCandidate);
   assert.equal(focusMarker, visibleCandidate);
+  assert.equal(domOrderTrapCandidate.getAttribute("data-stremio-remote-focus"), null);
   assert.equal(visibleCandidate.getAttribute("data-stremio-remote-focus"), "true");
   assert.equal(hiddenCandidate.getAttribute("data-stremio-remote-focus"), null);
   assert.equal(disabledCandidate.getAttribute("data-stremio-remote-focus"), null);
   assert.equal(zeroSizeCandidate.getAttribute("data-stremio-remote-focus"), null);
   assert.equal(diagnosticsButton.getAttribute("data-stremio-remote-focus"), null);
-  assert.equal(state.candidateCount, 1);
-  assert.equal(typeof state.currentFocusRole, "string");
-  assert.ok(state.currentFocusRole.length > 0);
+  assert.equal(document.querySelector("[data-stremio-remote-exit-button='1']").getAttribute("data-stremio-remote-focus"), null);
+  assert.equal(state.candidateCount, 2);
+  assert.equal(state.currentFocusRole, "button");
 });
 
-test("src/main.js moves focus directionally, falls back to DOM order when geometry has no match, removes the old marker, and activates Enter on the focused candidate", () => {
+test("src/main.js moves focus by geometry, not DOM order, removes the old marker, and activates Enter on the focused candidate", () => {
   const code = fs.readFileSync(mainScriptPath, "utf8");
   const document = createMockDocument();
 
@@ -1335,26 +1349,26 @@ test("src/main.js moves focus directionally, falls back to DOM order when geomet
   firstCandidate.setAttribute("role", "button");
   firstCandidate.setAttribute("data-test-id", "first");
 
-  const rightCandidate = createMockElement("button", {
+  const farRightCandidate = createMockElement("button", {
+    rect: { left: 520, top: 40, width: 160, height: 60 }
+  });
+  farRightCandidate.setAttribute("role", "button");
+  farRightCandidate.setAttribute("data-test-id", "far-right");
+
+  const nearRightCandidate = createMockElement("button", {
     rect: { left: 260, top: 40, width: 160, height: 60 }
   });
-  rightCandidate.setAttribute("role", "button");
-  rightCandidate.setAttribute("data-test-id", "right");
-
-  const fallbackCandidate = createMockElement("button", {
-    rect: { left: 60, top: 180, width: 160, height: 60 }
-  });
-  fallbackCandidate.setAttribute("role", "button");
-  fallbackCandidate.setAttribute("data-test-id", "fallback");
+  nearRightCandidate.setAttribute("role", "button");
+  nearRightCandidate.setAttribute("data-test-id", "near-right");
 
   let clickCount = 0;
-  fallbackCandidate.onclick = () => {
+  nearRightCandidate.onclick = () => {
     clickCount += 1;
   };
 
   document.body.appendChild(firstCandidate);
-  document.body.appendChild(rightCandidate);
-  document.body.appendChild(fallbackCandidate);
+  document.body.appendChild(farRightCandidate);
+  document.body.appendChild(nearRightCandidate);
 
   const context = {
     Date,
@@ -1379,25 +1393,176 @@ test("src/main.js moves focus directionally, falls back to DOM order when geomet
   const moveRightEvent = createKeyEvent("ArrowRight", { code: "ArrowRight" });
   document.dispatch("keydown", moveRightEvent);
   assert.equal(moveRightEvent.defaultPrevented, true);
-  assert.equal(document.activeElement, rightCandidate);
+  assert.equal(document.activeElement, nearRightCandidate);
   assert.equal(firstCandidate.getAttribute("data-stremio-remote-focus"), null);
-  assert.equal(rightCandidate.getAttribute("data-stremio-remote-focus"), "true");
+  assert.equal(farRightCandidate.getAttribute("data-stremio-remote-focus"), null);
+  assert.equal(nearRightCandidate.getAttribute("data-stremio-remote-focus"), "true");
   assert.equal(document.querySelectorAll("[data-stremio-remote-focus='true']").length, 1);
-
-  const fallbackEvent = createKeyEvent("ArrowRight", { code: "ArrowRight" });
-  document.dispatch("keydown", fallbackEvent);
-  assert.equal(fallbackEvent.defaultPrevented, true);
-  assert.equal(document.activeElement, fallbackCandidate);
-  assert.equal(rightCandidate.getAttribute("data-stremio-remote-focus"), null);
-  assert.equal(fallbackCandidate.getAttribute("data-stremio-remote-focus"), "true");
-  assert.equal(document.querySelectorAll("[data-stremio-remote-focus='true']").length, 1);
+  assert.equal(context[NAMESPACE].getState().candidateCount, 3);
+  assert.equal(context[NAMESPACE].getState().currentFocusRole, "button");
 
   const enterEvent = createKeyEvent("Enter", { code: "Enter" });
   document.dispatch("keydown", enterEvent);
   assert.equal(enterEvent.defaultPrevented, true);
   assert.equal(clickCount, 1);
-  assert.equal(fallbackCandidate.clickCount, 1);
+  assert.equal(nearRightCandidate.clickCount, 1);
   assert.equal(context[NAMESPACE].getState().currentFocusRole, "button");
+});
+
+test("src/main.js moves focus across left, up, and down candidates by geometry from the current content focus", () => {
+  const code = fs.readFileSync(mainScriptPath, "utf8");
+  const document = createMockDocument();
+
+  const leftCandidate = createMockElement("button", {
+    rect: { left: 20, top: 200, width: 140, height: 60 }
+  });
+  leftCandidate.setAttribute("role", "button");
+  leftCandidate.setAttribute("data-test-id", "left");
+
+  const centerCandidate = createMockElement("button", {
+    rect: { left: 220, top: 200, width: 140, height: 60 }
+  });
+  centerCandidate.setAttribute("role", "button");
+  centerCandidate.setAttribute("data-test-id", "center");
+
+  const upCandidate = createMockElement("button", {
+    rect: { left: 220, top: 20, width: 140, height: 60 }
+  });
+  upCandidate.setAttribute("role", "button");
+  upCandidate.setAttribute("data-test-id", "up");
+
+  const downCandidate = createMockElement("button", {
+    rect: { left: 220, top: 380, width: 140, height: 60 }
+  });
+  downCandidate.setAttribute("role", "button");
+  downCandidate.setAttribute("data-test-id", "down");
+
+  document.body.appendChild(leftCandidate);
+  document.body.appendChild(downCandidate);
+  document.body.appendChild(upCandidate);
+  document.body.appendChild(centerCandidate);
+
+  const context = {
+    Date,
+    tizen: {
+      tvinputdevice: {
+        registerKey() {}
+      }
+    },
+    document
+  };
+
+  vm.createContext(context);
+  vm.runInContext(code, context, { filename: mainScriptPath });
+
+  document.dispatch("keydown", createKeyEvent("ArrowRight", { code: "ArrowRight" }));
+  document.dispatch("keydown", createKeyEvent("ArrowRight", { code: "ArrowRight" }));
+  assert.equal(document.activeElement, centerCandidate);
+
+  const moveUpEvent = createKeyEvent("ArrowUp", { code: "ArrowUp" });
+  document.dispatch("keydown", moveUpEvent);
+  assert.equal(moveUpEvent.defaultPrevented, true);
+  assert.equal(document.activeElement, upCandidate);
+
+  const moveDownToCenterEvent = createKeyEvent("ArrowDown", { code: "ArrowDown" });
+  document.dispatch("keydown", moveDownToCenterEvent);
+  assert.equal(moveDownToCenterEvent.defaultPrevented, true);
+  assert.equal(document.activeElement, centerCandidate);
+
+  const moveDownEvent = createKeyEvent("ArrowDown", { code: "ArrowDown" });
+  document.dispatch("keydown", moveDownEvent);
+  assert.equal(moveDownEvent.defaultPrevented, true);
+  assert.equal(document.activeElement, downCandidate);
+
+  const moveLeftEvent = createKeyEvent("ArrowLeft", { code: "ArrowLeft" });
+  document.dispatch("keydown", moveLeftEvent);
+  assert.equal(moveLeftEvent.defaultPrevented, true);
+  assert.equal(document.activeElement, leftCandidate);
+  assert.equal(document.querySelectorAll("[data-stremio-remote-focus='true']").length, 1);
+  assert.equal(context[NAMESPACE].getState().candidateCount, 4);
+  assert.equal(context[NAMESPACE].getState().currentFocusRole, "button");
+});
+
+test("src/main.js soft-fails cleanly when no candidates exist", () => {
+  const code = fs.readFileSync(mainScriptPath, "utf8");
+  const document = createMockDocument();
+
+  const context = {
+    Date,
+    tizen: {
+      tvinputdevice: {
+        registerKey() {}
+      }
+    },
+    document
+  };
+
+  vm.createContext(context);
+  vm.runInContext(code, context, { filename: mainScriptPath });
+
+  const arrowEvent = createKeyEvent("ArrowRight", { code: "ArrowRight" });
+  document.dispatch("keydown", arrowEvent);
+
+  assert.equal(arrowEvent.defaultPrevented, false);
+  assert.equal(arrowEvent.propagationStopped, false);
+  assert.equal(document.activeElement, null);
+  assert.equal(context[NAMESPACE].getState().candidateCount, 0);
+  assert.equal(context[NAMESPACE].getState().currentFocusRole, null);
+  assert.equal(context[NAMESPACE].getState().lastConsumedAction, null);
+});
+
+test("src/main.js soft-fails when no directional candidate exists and preserves the current focus state", () => {
+  const code = fs.readFileSync(mainScriptPath, "utf8");
+  const document = createMockDocument();
+
+  const firstCandidate = createMockElement("button", {
+    rect: { left: 40, top: 40, width: 160, height: 60 }
+  });
+  firstCandidate.setAttribute("role", "button");
+
+  const secondCandidate = createMockElement("button", {
+    rect: { left: 260, top: 40, width: 160, height: 60 }
+  });
+  secondCandidate.setAttribute("role", "button");
+
+  document.body.appendChild(firstCandidate);
+  document.body.appendChild(secondCandidate);
+
+  const context = {
+    Date,
+    tizen: {
+      tvinputdevice: {
+        registerKey() {}
+      }
+    },
+    document
+  };
+
+  vm.createContext(context);
+  vm.runInContext(code, context, { filename: mainScriptPath });
+
+  const seedEvent = createKeyEvent("ArrowRight", { code: "ArrowRight" });
+  document.dispatch("keydown", seedEvent);
+  assert.equal(seedEvent.defaultPrevented, true);
+  assert.equal(document.activeElement, firstCandidate);
+
+  const moveEvent = createKeyEvent("ArrowRight", { code: "ArrowRight" });
+  document.dispatch("keydown", moveEvent);
+  assert.equal(moveEvent.defaultPrevented, true);
+  assert.equal(document.activeElement, secondCandidate);
+  assert.equal(secondCandidate.getAttribute("data-stremio-remote-focus"), "true");
+
+  const blockedEvent = createKeyEvent("ArrowRight", { code: "ArrowRight" });
+  document.dispatch("keydown", blockedEvent);
+  assert.equal(blockedEvent.defaultPrevented, false);
+  assert.equal(blockedEvent.propagationStopped, false);
+  assert.equal(document.activeElement, secondCandidate);
+  assert.equal(firstCandidate.getAttribute("data-stremio-remote-focus"), null);
+  assert.equal(secondCandidate.getAttribute("data-stremio-remote-focus"), "true");
+  assert.equal(document.querySelectorAll("[data-stremio-remote-focus='true']").length, 1);
+  assert.equal(context[NAMESPACE].getState().candidateCount, 2);
+  assert.equal(context[NAMESPACE].getState().currentFocusRole, "button");
+  assert.equal(context[NAMESPACE].getState().lastConsumedAction, null);
 });
 
 test("src/styles.css includes diagnostics panel rules", () => {

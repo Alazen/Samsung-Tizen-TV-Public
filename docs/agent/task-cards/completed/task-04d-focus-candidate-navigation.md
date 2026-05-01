@@ -2,7 +2,7 @@
 
 ## Status
 
-- State: active
+- State: completed
 - Parent ExecPlan: `docs/agent/exec-plans/active/task-04-runtime-core.md`
 - Current owner: Codex
 - Last updated: 2026-05-01
@@ -149,3 +149,31 @@ git diff --check -- docs/runtime docs/agent/task-cards/active/task-04d-focus-can
 - Validation commands and results
 - Acceptance status
 - Remaining risks
+
+## Completion notes
+
+- Summary:
+  - Task 4d is complete. The runtime now keeps focus movement geometry-based, seeds focus deterministically for the requested direction when no content candidate is active, and soft-fails instead of falling back to DOM order when no directional match exists.
+  - Task 4d coverage now explicitly proves module-owned diagnostics and exit UI are excluded from normal content focus, preserves editable passthrough, and exercises geometry movement plus soft-fail behavior across multiple navigation paths.
+- Changed files:
+  - `src/main.js`
+  - `tests/syntax.test.js`
+  - `docs/runtime/focus-spatial-navigation.md`
+  - `docs/agent/task-cards/completed/task-04d-focus-candidate-navigation.md`
+  - `docs/agent/task-cards/index.md`
+  - `docs/agent/exec-plans/active/task-04-runtime-core.md`
+- Validation commands and results:
+  - `npm run check:syntax` - passed
+  - `npm test` - passed
+  - `git diff --check -- docs/runtime docs/agent/task-cards/active/task-04d-focus-candidate-navigation.md` - passed with LF/CRLF normalization warning only
+  - `npm run check:manifest` - passed
+- Acceptance status:
+  - Focus candidate selection is explicit in code, tests, and docs.
+  - Module-owned diagnostics and exit UI remain outside normal content focus.
+  - Editable passthrough remains preserved.
+  - Geometry-based movement, direction-aware focus seeding, and soft-fail behavior are covered.
+  - No forbidden files were edited.
+  - Task 4.5 remains queued and was not started.
+- Remaining risks:
+  - Direction-aware seeding is deterministic for the current heuristics, but broader real-app layouts may still need follow-up tuning in later runtime slices.
+  - Real product acceptance still depends on the queued emulator bridge and later Samsung TV plus TizenBrew validation.
