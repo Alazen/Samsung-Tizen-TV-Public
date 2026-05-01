@@ -56,6 +56,7 @@ A blocked TaskCard must include:
 
 ## Active TaskCards
 
+- Task 4d: `active/task-04d-focus-candidate-navigation.md` - ready for execution as the next bounded runtime slice after Task 4a, Task 4b, and Task 4c completed
 - Task 4.5a: `active/task-04-5a-prepare-emulator-stremio-smoke-checklist.md` - queued behind Task 4 local validation; prepare the canonical smoke checklist only after a Task 4 runtime slice passes locally
 - Task 4.5b: `active/task-04-5b-define-served-source-and-injection-evidence.md` - queued behind Task 4 local validation; define source freshness and injection evidence for the emulator bridge
 - Task 4.5c: `active/task-04-5c-run-emulator-stremio-smoke-validation.md` - queued behind Task 4 local validation and 4.5a/4.5b; run the emulator smoke validation only after the bridge is ready

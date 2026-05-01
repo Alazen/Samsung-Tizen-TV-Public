@@ -4,7 +4,7 @@
 - State: active
 - Current owner: Codex
 - Last updated: 2026-05-01
-- Next action: create or execute Task 4d, the next focus candidate navigation slice, while keeping Task 4.5 queued until the emulator bridge is explicitly unlocked.
+- Next action: execute Task 4d, the focus candidate navigation slice, now that the TaskCard exists; keep Task 4.5 queued until the emulator bridge is explicitly unlocked.
 
 ## Goal
 Implement the thin TV-focused runtime control layer without replacing Stremio Web.
@@ -13,10 +13,11 @@ Implement the thin TV-focused runtime control layer without replacing Stremio We
 Durable runtime behavior is defined in `docs/runtime/*.md`; this plan tracks execution sequencing only.
 Task 4a is completed as the docs-only inventory and slice-plan step.
 Task 4b and Task 4c are completed local-validation slices.
+Task 4d is the next bounded runtime slice.
 Task 4.5 remains queued until a Task 4 slice passes local validation.
 
 ## Steps
-1. Create or confirm the bounded TaskCard for Task 4d.
+1. Confirm the bounded TaskCard for Task 4d.
 2. Execute one Task 4 runtime slice at a time with local validation after each change.
 3. Keep Task 4.5 queued until the team explicitly starts the emulator bridge.
 

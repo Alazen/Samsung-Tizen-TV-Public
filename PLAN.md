@@ -3,7 +3,7 @@
 ## Current status
 
 Task 3, Emulator Debug Harness Decision, is closed as blocked under Decision B.
-Task 4 is not started.
+Task 4 is active with Task 4a, Task 4b, and Task 4c completed, and Task 4d is the next runtime slice to execute.
 Task 4.5 is a queued emulator smoke-validation bridge against `https://web.stremio.com/`; it starts only after a Task 4 runtime slice passes local validation and it never replaces real Samsung TV acceptance.
 Task 5 remains the real Samsung TV plus TizenBrew validation gate and final acceptance path.
 
