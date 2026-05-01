@@ -4,7 +4,7 @@
 
 Task 3, Emulator Debug Harness Decision, is closed as blocked under Decision B.
 Task 4 is active with Task 4a, Task 4b, Task 4c, Task 4d, and Task 4e completed. The final runtime slice closed out Back, Exit, dialog behavior, diagnostics, and source-evidence prep.
-Task 5 is the queued emulator smoke-validation bridge against `https://web.stremio.com/`; the next step is a bridge readiness review, and it starts only when the team explicitly starts the bridge. It never replaces real Samsung TV acceptance.
+Task 5 is the queued emulator smoke-validation bridge against `https://web.stremio.com/`; the next step is the merged Task 5a bridge readiness checklist and evidence-rules review, then merged Task 5b can run and record the emulator smoke bridge only when the team explicitly starts the bridge. It never replaces real Samsung TV acceptance.
 Task 6 is the real Samsung TV plus TizenBrew validation gate and final acceptance path.
 
 Active plan:
@@ -25,10 +25,8 @@ Task 4 status:
 - Task 4e: `docs/agent/task-cards/completed/task-04e-back-exit-dialog-diagnostics-and-source-evidence-prep.md` - completed local validation for Back, Exit, dialog behavior, diagnostics evidence, and explicit source/injection markers
 
 Task 5 status:
-- Task 5a: `docs/agent/task-cards/active/task-05a-prepare-emulator-stremio-smoke-checklist.md` - queued bridge-readiness checklist
-- Task 5b: `docs/agent/task-cards/active/task-05b-define-served-source-and-injection-evidence.md` - queued source freshness and injection evidence definition
-- Task 5c: `docs/agent/task-cards/active/task-05c-run-emulator-stremio-smoke-validation.md` - queued emulator smoke validation
-- Task 5d: `docs/agent/task-cards/active/task-05d-record-emulator-stremio-results.md` - queued result recording and Task 6 handoff
+- Task 5a: `docs/agent/task-cards/active/task-05a-prepare-emulator-stremio-smoke-checklist.md` - queued bridge-readiness checklist, source freshness rules, injection evidence rules, and result rubric
+- Task 5b: `docs/agent/task-cards/active/task-05b-run-and-record-emulator-stremio-smoke-validation.md` - queued emulator smoke validation, result recording, residual-risk capture, and Task 6 handoff
 
 TaskCard index:
 - `docs/agent/task-cards/index.md`
