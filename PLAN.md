@@ -2,15 +2,19 @@
 
 ## Current status
 
-Task 3, Emulator Debug Harness Decision, is closed as blocked on a repeatable fresh install/debug refresh path.
-Task 4 is not started. It may be decomposed only if its TaskCards explicitly preserve Decision B, the stale-launch risk, the signing/decryption blocker, and the requirement for real Samsung TV validation.
+Task 3, Emulator Debug Harness Decision, is closed as blocked under Decision B.
+Task 4 is not started.
+Task 4.5 is a queued emulator smoke-validation bridge against `https://web.stremio.com/`; it starts only after a Task 4 runtime slice passes local validation and it never replaces real Samsung TV acceptance.
+Task 5 remains the real Samsung TV plus TizenBrew validation gate and final acceptance path.
 
 Active plan:
-- `docs/agent/exec-plans/active/task-03-emulator-debug-harness-decision.md`
+- `docs/agent/exec-plans/active/task-04-runtime-core.md`
+- `docs/agent/exec-plans/active/task-04-5-emulator-stremio-web-smoke-validation.md`
+- `docs/agent/exec-plans/active/task-05-real-tv-tizenbrew-validation.md`
 
 Task 3 status:
 - Task 3A: `docs/agent/task-cards/completed/task-03a-create-debug-harness-taskcards.md` - completed
-- Task 3B: `docs/agent/task-cards/blocked/task-03b-validate-debug-command-path.md` - blocked
+- Task 3B: `docs/agent/task-cards/blocked/task-03b-validate-debug-command-path.md` - blocked under Decision B
 - Task 3C: `docs/agent/task-cards/completed/task-03c-record-debug-harness-decision.md` - completed
 
 TaskCard index:
@@ -22,8 +26,8 @@ Build a thin TizenBrew site-modification module that improves Stremio Web remote
 
 ## Active plans
 
-- Task 3: `docs/agent/exec-plans/active/task-03-emulator-debug-harness-decision.md`
 - Task 4: `docs/agent/exec-plans/active/task-04-runtime-core.md`
+- Task 4.5: `docs/agent/exec-plans/active/task-04-5-emulator-stremio-web-smoke-validation.md`
 - Task 5: `docs/agent/exec-plans/active/task-05-real-tv-tizenbrew-validation.md`
 
 ## Completed plans

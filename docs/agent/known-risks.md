@@ -35,3 +35,9 @@
 - Risk: in `gabi-pc\codexsandboxonline`, `tz run -d -e emulator-26101 -w <project-path>` can fail with `tz: error: command terminated after timeout` even while `sdb devices` shows the emulator online.
 - Impact: the debug launch may fail before producing a Web Inspector endpoint, blocking live served-JS freshness verification in that context.
 - Mitigation: treat this identity-specific timeout as a blocker for sandbox-run evidence; re-run under the real desktop user context when available and continue enforcing served-source parity checks.
+
+## R-007: Emulator smoke validation only gives local confidence
+- Date: 2026-05-01
+- Risk: a `web.stremio.com` emulator smoke pass can confirm local wiring, diagnostics, and navigation behavior, but it cannot prove final user acceptance on a real Samsung TV.
+- Impact: Task 4.5 could be mistaken for sign-off even though focus, back, media-key, or input behavior may differ on the real device.
+- Mitigation: require source freshness evidence before trusting live emulator observations, record pass/partial/blocked outcomes only, and keep Task 5 real-TV validation mandatory.

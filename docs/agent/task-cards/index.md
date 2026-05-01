@@ -49,13 +49,17 @@ A blocked TaskCard must include:
 
 ## Task 3 status
 
+- Task 3 is closed as blocked under Decision B.
 - Task 3A: `completed/task-03a-create-debug-harness-taskcards.md` - completed
 - Task 3B: `blocked/task-03b-validate-debug-command-path.md` - blocked
 - Task 3C: `completed/task-03c-record-debug-harness-decision.md` - completed
 
 ## Active TaskCards
 
-- None currently recorded.
+- Task 4.5a: `active/task-04-5a-prepare-emulator-stremio-smoke-checklist.md` - prepare the canonical smoke checklist, queued behind Task 4 local validation
+- Task 4.5b: `active/task-04-5b-define-served-source-and-injection-evidence.md` - define source freshness and injection evidence, queued behind Task 4 local validation
+- Task 4.5c: `active/task-04-5c-run-emulator-stremio-smoke-validation.md` - run the emulator smoke validation after Task 4 local validation passes
+- Task 4.5d: `active/task-04-5d-record-emulator-stremio-results.md` - record smoke results and residual risks after validation
 
 ## Completed TaskCards
 
