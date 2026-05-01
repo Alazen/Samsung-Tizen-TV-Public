@@ -7,6 +7,14 @@ Current task: Task 3, Emulator Debug Harness Decision.
 Active plan:
 - `docs/agent/exec-plans/active/task-03-emulator-debug-harness-decision.md`
 
+Active TaskCards:
+- Task 3A: `docs/agent/task-cards/active/task-03a-create-debug-harness-taskcards.md`
+- Task 3B: `docs/agent/task-cards/active/task-03b-validate-debug-command-path.md`
+- Task 3C: `docs/agent/task-cards/active/task-03c-record-debug-harness-decision.md`
+
+TaskCard index:
+- `docs/agent/task-cards/index.md`
+
 ## Project goal
 
 Build a thin TizenBrew site-modification module that improves Stremio Web remote-control usability on Samsung Tizen TVs without replacing Stremio Web.
@@ -32,7 +40,17 @@ Build a thin TizenBrew site-modification module that improves Stremio Web remote
 - Local toolchain: `docs/agent/local-toolchain.md`
 - Known risks: `docs/agent/known-risks.md`
 - Decisions: `docs/agent/decision-log.md`
+- Agent architecture router: `docs/agent/architecture.md`
+- TaskCard index: `docs/agent/task-cards/index.md`
 
 ## Rule for future work
 
 Do not start application behavior changes until the active ExecPlan has been converted into bounded TaskCards with allowed files, validation commands, acceptance criteria, and stop conditions.
+
+Every active agent or subagent task must have a TaskCard in `docs/agent/task-cards/active/`.
+
+Completed TaskCards belong in `docs/agent/task-cards/completed/`.
+
+Blocked TaskCards belong in `docs/agent/task-cards/blocked/`.
+
+Do not use completed TaskCards as permission to perform new work.
