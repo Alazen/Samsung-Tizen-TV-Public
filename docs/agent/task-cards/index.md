@@ -56,10 +56,10 @@ A blocked TaskCard must include:
 
 ## Active TaskCards
 
-- Task 4.5a: `active/task-04-5a-prepare-emulator-stremio-smoke-checklist.md` - queued behind Task 4 local validation; prepare the canonical smoke checklist only after a Task 4 runtime slice passes locally
-- Task 4.5b: `active/task-04-5b-define-served-source-and-injection-evidence.md` - queued behind Task 4 local validation; define source freshness and injection evidence for the emulator bridge
-- Task 4.5c: `active/task-04-5c-run-emulator-stremio-smoke-validation.md` - queued behind Task 4 local validation and 4.5a/4.5b; run the emulator smoke validation only after the bridge is ready
-- Task 4.5d: `active/task-04-5d-record-emulator-stremio-results.md` - queued behind Task 4 local validation and 4.5c; record smoke results and residual risks after emulator execution
+- Task 5a: `active/task-05a-prepare-emulator-stremio-smoke-checklist.md` - queued behind Task 4 local validation; prepare the canonical smoke checklist only after Task 5 is explicitly started
+- Task 5b: `active/task-05b-define-served-source-and-injection-evidence.md` - queued behind Task 4 local validation; define source freshness and injection evidence for the emulator bridge
+- Task 5c: `active/task-05c-run-emulator-stremio-smoke-validation.md` - queued behind Task 4 local validation and 5a/5b; run the emulator smoke validation only after the bridge is ready and explicitly started
+- Task 5d: `active/task-05d-record-emulator-stremio-results.md` - queued behind Task 4 local validation and 5c; record smoke results and residual risks before Task 6 real-TV validation
 
 ## Completed TaskCards
 
