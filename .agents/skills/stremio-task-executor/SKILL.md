@@ -44,6 +44,8 @@ Use this when a bounded TaskCard reaches emulator-debug validation.
 6. Capture evidence for diagnostics panel presence, key event names and codes, `window.tizen` / `tizen.tvinputdevice` / `tizen.application` availability, registered versus failed optional keys, and Web Inspector or Log Console attachment in debug mode.
 7. Generated `Debug/` folders and `.wgt` packages are non-source artifacts; do not commit them.
 
+Before accepting emulator or Web Inspector behavior as evidence, use `.agents/skills/harness-parity-live-served-verification` to prove repo source, ignored Debug output, and live served `js/stremio-remote.js` contain the expected source marker.
+
 ## Safety rules
 - Do not revert unrelated edits from other workers.
 - Do not commit generated artifacts by default (`target/`, `*.exe`, `*.zip`, `*.log`, caches, temp files).
