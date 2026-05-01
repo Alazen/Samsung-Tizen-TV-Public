@@ -3,8 +3,8 @@
 ## Current status
 
 Task 3, Emulator Debug Harness Decision, is closed as blocked under Decision B.
-Task 4 is active with Task 4a, Task 4b, and Task 4c completed, and Task 4d is the next runtime slice to execute.
-Task 4.5 is a queued emulator smoke-validation bridge against `https://web.stremio.com/`; it starts only after a Task 4 runtime slice passes local validation and it never replaces real Samsung TV acceptance.
+Task 4 is active with Task 4a, Task 4b, Task 4c, and Task 4d completed. The current runtime slice is merged Task 4e, covering Back, Exit, dialog behavior, diagnostics, and source-evidence prep.
+Task 4.5 is a queued emulator smoke-validation bridge against `https://web.stremio.com/`; it starts only after Task 4 local validation passes and it never replaces real Samsung TV acceptance.
 Task 5 remains the real Samsung TV plus TizenBrew validation gate and final acceptance path.
 
 Active plan:
@@ -16,6 +16,13 @@ Task 3 status:
 - Task 3A: `docs/agent/task-cards/completed/task-03a-create-debug-harness-taskcards.md` - completed
 - Task 3B: `docs/agent/task-cards/blocked/task-03b-validate-debug-command-path.md` - blocked under Decision B
 - Task 3C: `docs/agent/task-cards/completed/task-03c-record-debug-harness-decision.md` - completed
+
+Task 4 status:
+- Task 4a: `docs/agent/task-cards/completed/task-04a-runtime-core-inventory-and-slice-plan.md` - completed
+- Task 4b: `docs/agent/task-cards/completed/task-04b-runtime-contract-and-public-api-hardening.md` - completed
+- Task 4c: `docs/agent/task-cards/completed/task-04c-remote-key-routing-and-editable-safety.md` - completed
+- Task 4d: `docs/agent/task-cards/completed/task-04d-focus-candidate-navigation.md` - completed
+- Task 4e: `docs/agent/task-cards/active/task-04e-back-exit-dialog-diagnostics-and-source-evidence-prep.md` - active merged runtime slice
 
 TaskCard index:
 - `docs/agent/task-cards/index.md`
