@@ -4,8 +4,8 @@
 
 - State: active
 - Parent ExecPlan: `docs/agent/exec-plans/active/task-03-emulator-debug-harness-decision.md`
-- Current owner: unassigned
-- Last updated: 2026-04-30
+- Current owner: Codex
+- Last updated: 2026-05-01
 
 ## Objective
 
@@ -62,6 +62,12 @@ Record one of:
 
 ```text
 Decision A: Use the repo-tracked `CodexTvRuntimeCheck` project as the preferred debug harness.
+Decision B: Debug harness is blocked pending emulator/toolchain/user-context access.
+```
+
+Current outcome:
+
+```text
 Decision B: Debug harness is blocked pending emulator/toolchain/user-context access.
 ```
 

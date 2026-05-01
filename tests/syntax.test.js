@@ -7,10 +7,41 @@ const vm = require("node:vm");
 const rootDir = path.resolve(__dirname, "..");
 const mainScriptPath = path.join(rootDir, "src", "main.js");
 const stylesPath = path.join(rootDir, "src", "styles.css");
+const harnessRemoteScriptPath = path.join(rootDir, "harness", "CodexTvRuntimeCheck", "js", "stremio-remote.js");
 const NAMESPACE = "__STREMIO_TIZENBREW_REMOTE__";
 
 function toDataKey(attributeName) {
   return attributeName.replace(/^data-/, "").replace(/-([a-z])/g, (_match, letter) => letter.toUpperCase());
+}
+
+function extractFunctionSource(source, functionName) {
+  const signature = `function ${functionName}(`;
+  const start = source.indexOf(signature);
+  if (start < 0) {
+    return null;
+  }
+
+  const openBrace = source.indexOf("{", start);
+  if (openBrace < 0) {
+    return null;
+  }
+
+  let depth = 0;
+  for (let index = openBrace; index < source.length; index += 1) {
+    if (source[index] === "{") {
+      depth += 1;
+      continue;
+    }
+
+    if (source[index] === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        return source.slice(start, index + 1).replace(/\s+/g, " ").trim();
+      }
+    }
+  }
+
+  return null;
 }
 
 function createMockElement(tagName, options = {}) {
@@ -432,6 +463,22 @@ test("src/main.js is valid JavaScript syntax", () => {
   });
 });
 
+test("harness visibility and dialog heuristics stay in sync with src/main.js", () => {
+  const sourceMainCode = fs.readFileSync(mainScriptPath, "utf8");
+  const harnessCode = fs.readFileSync(harnessRemoteScriptPath, "utf8");
+  const sourceVisibilityFunction = extractFunctionSource(sourceMainCode, "isElementVisible");
+  const harnessVisibilityFunction = extractFunctionSource(harnessCode, "isElementVisible");
+  const sourceDialogFunction = extractFunctionSource(sourceMainCode, "isDialogLikeElement");
+  const harnessDialogFunction = extractFunctionSource(harnessCode, "isDialogLikeElement");
+
+  assert.notEqual(sourceVisibilityFunction, null);
+  assert.notEqual(harnessVisibilityFunction, null);
+  assert.equal(harnessVisibilityFunction, sourceVisibilityFunction);
+  assert.notEqual(sourceDialogFunction, null);
+  assert.notEqual(harnessDialogFunction, null);
+  assert.equal(harnessDialogFunction, sourceDialogFunction);
+});
+
 test("src/main.js bootstraps with runtime state, diagnostics, and TV input helpers", () => {
   const registeredKeys = [];
   const { context, document, api } = bootstrapMainScript({
@@ -844,6 +891,56 @@ test("src/main.js Back activates a single visible dialog close control and falls
   assert.equal(secondCloseButton.clickCount, 0);
   assert.equal(ambiguousRuntime.api.getState().lastBackResolution, "exit-modal:open");
   assert.equal(ambiguousRuntime.api.getState().exitModalOpen, true);
+});
+
+test("src/main.js Back closes the harness-style fixture dialog instead of misclassifying open-dialog or close-dialog controls", () => {
+  const document = createMockDocument();
+  const openDialogButton = createMockElement("button", {
+    id: "open-dialog",
+    rect: { left: 60, top: 80, width: 220, height: 48 }
+  });
+  openDialogButton.textContent = "Open Fixture Dialog";
+
+  const fixtureDialog = createMockElement("div", {
+    id: "fixture-dialog",
+    rect: { left: 240, top: 120, width: 400, height: 260 }
+  });
+  fixtureDialog.setAttribute("role", "dialog");
+  fixtureDialog.setAttribute("aria-modal", "true");
+
+  const fixtureDialogCard = createMockElement("div", {
+    className: "fixture-dialog-card",
+    rect: { left: 260, top: 140, width: 360, height: 220 }
+  });
+  const closeDialogButton = createMockElement("button", {
+    id: "close-dialog",
+    rect: { left: 520, top: 320, width: 96, height: 44 }
+  });
+  closeDialogButton.setAttribute("aria-label", "Close");
+  closeDialogButton.textContent = "Close";
+
+  fixtureDialogCard.appendChild(closeDialogButton);
+  fixtureDialog.appendChild(fixtureDialogCard);
+  document.body.appendChild(openDialogButton);
+  document.body.appendChild(fixtureDialog);
+
+  const runtime = bootstrapMainScript({
+    document,
+    location: {
+      pathname: "/harness-dialog-naming"
+    },
+    tizen: {
+      tvinputdevice: {
+        registerKey() {}
+      }
+    }
+  });
+
+  const backEvent = dispatchKey(document, "Back", { code: "BrowserBack" });
+  assert.equal(backEvent.defaultPrevented, true);
+  assert.equal(closeDialogButton.clickCount, 1);
+  assert.equal(runtime.api.getState().lastBackResolution, "dialog:close-affordance");
+  assert.equal(runtime.api.getState().exitModalOpen, false);
 });
 
 test("src/main.js ignores dialog close controls inside hidden ancestors", () => {

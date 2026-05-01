@@ -981,10 +981,26 @@
   function isDialogLikeElement(element) {
     var names = getElementNameMap(element);
     var ariaModal = String(getElementAttribute(element, "aria-modal") || "").toLowerCase();
+    var tagName = typeof element.tagName === "string" ? element.tagName.toLowerCase() : "";
+    var isInteractiveControl = (
+      tagName === "a" ||
+      tagName === "button" ||
+      tagName === "input" ||
+      tagName === "select" ||
+      tagName === "textarea" ||
+      names.role === "button" ||
+      names.role === "link"
+    );
+
+    if (names.role === "dialog" || ariaModal === "true") {
+      return true;
+    }
+
+    if (isInteractiveControl) {
+      return false;
+    }
 
     return Boolean(
-      names.role === "dialog" ||
-      ariaModal === "true" ||
       containsAny(names.className, ["dialog", "modal", "overlay"]) ||
       containsAny(names.id, ["dialog", "modal", "overlay"])
     );

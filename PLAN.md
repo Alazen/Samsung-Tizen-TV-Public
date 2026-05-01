@@ -2,7 +2,7 @@
 
 ## Current status
 
-Current task: Task 3, Emulator Debug Harness Decision.
+Current task: Task 3, Emulator Debug Harness Decision (blocked on a repeatable fresh install/debug refresh path).
 
 Active plan:
 - `docs/agent/exec-plans/active/task-03-emulator-debug-harness-decision.md`

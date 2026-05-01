@@ -17,3 +17,15 @@
 - Risk: local npm, Tizen CLI, and SDB behavior can depend on user PATH, user-global npm state, and the Windows identity running the command.
 - Impact: validation or device commands can fail in one shell/context while working in another.
 - Mitigation: use `docs/agent/local-toolchain.md` diagnostics before changing application code for npm/Tizen/SDB failures.
+
+## R-004: Debug launch can attach to a stale installed harness copy
+- Date: 2026-05-01
+- Risk: `tz.exe run -d -e emulator-26101 -w <project-path>` can attach Web Inspector to an already installed harness build that does not reflect the latest repo-tracked `js/stremio-remote.js`.
+- Impact: emulator results can look like runtime regressions even after the tracked source and ignored `Debug/` build output have been fixed locally.
+- Mitigation: confirm the served `js/stremio-remote.js` content inside the live debug target before trusting emulator evidence, and do not treat `tz run` alone as a fresh-code launch path.
+
+## R-005: Fresh install path is blocked by signing password decryption
+- Date: 2026-05-01
+- Risk: `tz pack -w <project-path> -t wgt` stopped with `ERROR:Decryption error!` while generating the author signature for the harness package.
+- Impact: the normal package/install path from the official Tizen run/debug flow cannot currently be used to prove a repeatable fresh deploy from the repo.
+- Mitigation: keep Task 3 blocked until the active certificate profile can be used non-interactively in the current user context or a documented alternative refresh path is verified.

@@ -912,30 +912,34 @@
   }
 
   function isElementVisible(element, options) {
-    var rect = getElementRect(element);
-    var computedStyle = getComputedStyleSafe(element);
     var allowModuleOwned = Boolean(options && options.allowModuleOwned);
+    var rect = getElementRect(element);
+    var current = element;
+    var computedStyle;
 
     if (!element || (!allowModuleOwned && isModuleOwnedElement(element))) {
-      return false;
-    }
-    if (element.hidden === true) {
       return false;
     }
     if (element.disabled === true || getElementAttribute(element, "aria-disabled") === "true") {
       return false;
     }
-    if (getElementAttribute(element, "aria-hidden") === "true") {
-      return false;
-    }
     if (isEditableTarget(element)) {
-      return false;
-    }
-    if (computedStyle && (computedStyle.display === "none" || computedStyle.visibility === "hidden")) {
       return false;
     }
     if (rect.width <= 0 || rect.height <= 0) {
       return false;
+    }
+
+    while (current) {
+      computedStyle = getComputedStyleSafe(current);
+      if (
+        current.hidden === true ||
+        getElementAttribute(current, "aria-hidden") === "true" ||
+        (computedStyle && (computedStyle.display === "none" || computedStyle.visibility === "hidden"))
+      ) {
+        return false;
+      }
+      current = current.parentNode || null;
     }
 
     return true;
@@ -977,10 +981,26 @@
   function isDialogLikeElement(element) {
     var names = getElementNameMap(element);
     var ariaModal = String(getElementAttribute(element, "aria-modal") || "").toLowerCase();
+    var tagName = typeof element.tagName === "string" ? element.tagName.toLowerCase() : "";
+    var isInteractiveControl = (
+      tagName === "a" ||
+      tagName === "button" ||
+      tagName === "input" ||
+      tagName === "select" ||
+      tagName === "textarea" ||
+      names.role === "button" ||
+      names.role === "link"
+    );
+
+    if (names.role === "dialog" || ariaModal === "true") {
+      return true;
+    }
+
+    if (isInteractiveControl) {
+      return false;
+    }
 
     return Boolean(
-      names.role === "dialog" ||
-      ariaModal === "true" ||
       containsAny(names.className, ["dialog", "modal", "overlay"]) ||
       containsAny(names.id, ["dialog", "modal", "overlay"])
     );

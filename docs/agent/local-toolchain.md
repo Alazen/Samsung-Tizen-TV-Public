@@ -135,6 +135,33 @@ Required evidence to record for this recipe:
 - Record that Tizen 8.0 final compatibility must be validated on a real Samsung
   TV, not the local generic Tizen 8.0 emulator.
 
+## Task 3B debug run evidence
+
+- On 2026-05-01, the preferred debug command launched the harness and exposed a
+  page target through the Web Inspector websocket:
+  - Command:
+    `E:\tizen-studio\tools\tizen-core\tz.exe run -d -e emulator-26101 -w C:\Users\gabip\GitHub\Stremio-WebApp\harness\CodexTvRuntimeCheck`
+  - Debug attachment:
+    `ws://127.0.0.1:37836/devtools/page/0E7D84496FC845B87D0F90C66E9B8F5C`
+  - Initial snapshot:
+    `window.tizen=true`, `tizen.tvinputdevice=true`, `tizen.application=true`,
+    `styleTagPresent=true`
+  - Root cause:
+    the dialog-close failure came from a real source bug where ids such as
+    `open-dialog` and `close-dialog` were being treated as dialog containers.
+  - Refresh blocker:
+    after the source fix landed in the repo, the live debug target still served
+    a stale `js/stremio-remote.js` copy. `fetch('js/stremio-remote.js')` inside
+    the running app did not include the new `isInteractiveControl` guard.
+  - Build evidence:
+    `tz build -w C:\Users\gabip\GitHub\Stremio-WebApp\harness\CodexTvRuntimeCheck -b Debug`
+    refreshed the ignored `Debug/` copy, and that built file did contain the
+    `isInteractiveControl` guard.
+  - Fresh install blocker:
+    `tz pack -w C:\Users\gabip\GitHub\Stremio-WebApp\harness\CodexTvRuntimeCheck -t wgt`
+    failed with `ERROR:Decryption error!` while generating the author
+    signature, so the normal package/install path could not be completed.
+
 ## Tizen CLI log permissions
 
 - Observed error: Tizen CLI emitted `FileNotFoundException: E:\tizen-studio-data\cli\logs\cli.log (Acesso negado)`.

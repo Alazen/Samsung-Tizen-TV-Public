@@ -4,8 +4,8 @@
 
 - State: active
 - Parent ExecPlan: `docs/agent/exec-plans/active/task-03-emulator-debug-harness-decision.md`
-- Current owner: unassigned
-- Last updated: 2026-04-30
+- Current owner: Codex
+- Last updated: 2026-05-01
 
 ## Objective
 
@@ -102,6 +102,32 @@ Generated artifact check before final report:
 ```bash
 git status --short
 ```
+
+## Evidence captured
+
+- 2026-05-01 debug launch command:
+  `E:\tizen-studio\tools\tizen-core\tz.exe run -d -e emulator-26101 -w C:\Users\gabip\GitHub\Stremio-WebApp\harness\CodexTvRuntimeCheck`
+- Web Inspector attachment resolved through:
+  `ws://127.0.0.1:37836/devtools/page/0E7D84496FC845B87D0F90C66E9B8F5C`
+- Initial runtime snapshot confirmed:
+  `window.tizen`, `tizen.tvinputdevice`, `tizen.application`, and the injected
+  style tag were present before branch validation started.
+- `Info` opened diagnostics and `Back` closed diagnostics.
+- Live CDP inspection identified a real source bug in dialog detection:
+  ids such as `open-dialog` and `close-dialog` were misclassified as dialog
+  containers. The repo-tracked source now includes a fix and regression coverage
+  for that naming pattern.
+- Blocker:
+  after the source fix, the live debug target still served a stale
+  `js/stremio-remote.js` copy. `fetch('js/stremio-remote.js')` inside the
+  running app still lacked the `isInteractiveControl` guard even though both the
+  repo-tracked harness file and the ignored `Debug/` build copy contained it.
+- `tz build -w C:\Users\gabip\GitHub\Stremio-WebApp\harness\CodexTvRuntimeCheck -b Debug`
+  refreshed the ignored `Debug/` copy with the fix.
+- `tz pack -w C:\Users\gabip\GitHub\Stremio-WebApp\harness\CodexTvRuntimeCheck -t wgt`
+  failed with `ERROR:Decryption error!` while generating the author signature,
+  so the normal fresh install path could not be completed in this session.
+- Real Samsung TV Tizen 8.0 validation remains required.
 
 ## Done when
 
