@@ -4,13 +4,13 @@
 
 Task 3, Emulator Debug Harness Decision, is closed as blocked under Decision B.
 Task 4 is active with Task 4a, Task 4b, Task 4c, Task 4d, and Task 4e completed. The final runtime slice closed out Back, Exit, dialog behavior, diagnostics, and source-evidence prep.
-Task 4.5 is a queued emulator smoke-validation bridge against `https://web.stremio.com/`; the next step is a bridge readiness review, and it starts only when the team explicitly starts the bridge. It never replaces real Samsung TV acceptance.
-Task 5 remains the real Samsung TV plus TizenBrew validation gate and final acceptance path.
+Task 5 is the queued emulator smoke-validation bridge against `https://web.stremio.com/`; the next step is a bridge readiness review, and it starts only when the team explicitly starts the bridge. It never replaces real Samsung TV acceptance.
+Task 6 is the real Samsung TV plus TizenBrew validation gate and final acceptance path.
 
 Active plan:
 - `docs/agent/exec-plans/active/task-04-runtime-core.md`
-- `docs/agent/exec-plans/active/task-04-5-emulator-stremio-web-smoke-validation.md`
-- `docs/agent/exec-plans/active/task-05-real-tv-tizenbrew-validation.md`
+- `docs/agent/exec-plans/active/task-05-emulator-stremio-web-smoke-validation.md`
+- `docs/agent/exec-plans/active/task-06-real-tv-tizenbrew-validation.md`
 
 Task 3 status:
 - Task 3A: `docs/agent/task-cards/completed/task-03a-create-debug-harness-taskcards.md` - completed
@@ -24,6 +24,12 @@ Task 4 status:
 - Task 4d: `docs/agent/task-cards/completed/task-04d-focus-candidate-navigation.md` - completed
 - Task 4e: `docs/agent/task-cards/completed/task-04e-back-exit-dialog-diagnostics-and-source-evidence-prep.md` - completed local validation for Back, Exit, dialog behavior, diagnostics evidence, and explicit source/injection markers
 
+Task 5 status:
+- Task 5a: `docs/agent/task-cards/active/task-05a-prepare-emulator-stremio-smoke-checklist.md` - queued bridge-readiness checklist
+- Task 5b: `docs/agent/task-cards/active/task-05b-define-served-source-and-injection-evidence.md` - queued source freshness and injection evidence definition
+- Task 5c: `docs/agent/task-cards/active/task-05c-run-emulator-stremio-smoke-validation.md` - queued emulator smoke validation
+- Task 5d: `docs/agent/task-cards/active/task-05d-record-emulator-stremio-results.md` - queued result recording and Task 6 handoff
+
 TaskCard index:
 - `docs/agent/task-cards/index.md`
 
@@ -34,8 +40,8 @@ Build a thin TizenBrew site-modification module that improves Stremio Web remote
 ## Active plans
 
 - Task 4: `docs/agent/exec-plans/active/task-04-runtime-core.md`
-- Task 4.5: `docs/agent/exec-plans/active/task-04-5-emulator-stremio-web-smoke-validation.md`
-- Task 5: `docs/agent/exec-plans/active/task-05-real-tv-tizenbrew-validation.md`
+- Task 5: `docs/agent/exec-plans/active/task-05-emulator-stremio-web-smoke-validation.md`
+- Task 6: `docs/agent/exec-plans/active/task-06-real-tv-tizenbrew-validation.md`
 
 ## Completed plans
 
