@@ -35,6 +35,7 @@ description: Execute one bounded Stremio TaskCard end to end using allowed-file 
 
 ## Emulator Debug Harness
 Use this when a bounded TaskCard reaches emulator-debug validation.
+Before accepting emulator or Web Inspector behavior as evidence, use `.agents/skills/harness-parity-live-served-verification` to prove repo source, ignored Debug output, and live served `js/stremio-remote.js` contain the expected source marker.
 
 1. Use the checked-in `CodexTvRuntimeCheck` project root as the harness path.
 2. If optional remote key registration is under validation, ensure `http://tizen.org/privilege/tv.inputdevice` is present in the harness `config.xml`.

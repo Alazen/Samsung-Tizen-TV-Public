@@ -6,6 +6,7 @@ Use repo-local skills as narrow execution tools, not as general prompts.
 ## Skill routing
 - Use `.agents/skills/tizen-doc-lookup` when a Tizen task needs official source verification.
 - Use `.agents/skills/stremio-task-executor` for bounded implementation from a TaskCard with explicit acceptance criteria.
+- Use `.agents/skills/harness-parity-live-served-verification` when emulator, TV, or Web Inspector evidence depends on proving the live served harness JavaScript matches the repo source.
 
 ## Invocation boundaries
 - Prefer implicit invocation for low-risk, repeatable implementation work.

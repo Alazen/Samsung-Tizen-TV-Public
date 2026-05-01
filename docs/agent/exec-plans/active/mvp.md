@@ -22,7 +22,7 @@ Deliver a repository execution harness that allows small TaskCard-driven impleme
 - No edits outside assigned ownership.
 
 ## Validation plan
-- `git diff --check -- AGENTS.md docs/agent .agents/skills/stremio-task-executor/SKILL.md`
+- `git diff --check -- AGENTS.md docs/agent .agents/skills/stremio-task-executor/SKILL.md .agents/skills/harness-parity-live-served-verification/SKILL.md`
 
 ## Risks
 - Worker B package scripts may not yet exist; command definitions are documented now and should be verified once scripts land.
