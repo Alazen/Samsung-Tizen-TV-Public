@@ -38,6 +38,6 @@
 
 ## R-007: Emulator smoke validation only gives local confidence
 - Date: 2026-05-01
-- Risk: a `web.stremio.com` emulator smoke pass can confirm local wiring, diagnostics, and navigation behavior, but it cannot prove final user acceptance on a real Samsung TV.
-- Impact: Task 4.5 could be mistaken for sign-off even though focus, back, media-key, or input behavior may differ on the real device.
-- Mitigation: require source freshness evidence before trusting live emulator observations, record pass/partial/blocked outcomes only, and keep Task 5 real-TV validation mandatory.
+- Risk: a Task 5 `web.stremio.com` emulator smoke pass can confirm local wiring, diagnostics, and navigation behavior, but it cannot prove final user acceptance on a real Samsung TV.
+- Impact: Task 5 could be mistaken for sign-off even though focus, back, media-key, or input behavior may differ on the real device.
+- Mitigation: require source freshness evidence before trusting live emulator observations, record pass/partial/blocked outcomes only, and keep Task 6 real-TV validation mandatory.
