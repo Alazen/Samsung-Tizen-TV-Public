@@ -11,9 +11,9 @@
 
 Complete the final Task 4 runtime slice by merging the original Task 4e and Task 4f scopes into one bounded implementation task.
 
-This card authorizes Back routing, exit modal behavior, modal-contained navigation, diagnostics completeness, and source-evidence prep for the later Task 4.5 emulator bridge.
+This card authorizes Back routing, exit modal behavior, modal-contained navigation, diagnostics completeness, and source-evidence prep for the later Task 5 emulator bridge.
 
-This card does not authorize emulator execution, real Samsung TV validation, dependency changes, generated artifacts, signing material, or starting Task 4.5.
+This card does not authorize emulator execution, real Samsung TV validation, dependency changes, generated artifacts, signing material, or starting Task 5.
 
 ## Required context
 
@@ -22,7 +22,7 @@ This card does not authorize emulator execution, real Samsung TV validation, dep
 - `PLAN.md`
 - `docs/agent/task-cards/index.md`
 - `docs/agent/exec-plans/active/task-04-runtime-core.md`
-- `docs/agent/exec-plans/active/task-04-5-emulator-stremio-web-smoke-validation.md`
+- `docs/agent/exec-plans/active/task-05-emulator-stremio-web-smoke-validation.md`
 - `docs/agent/validation.md`
 - `docs/runtime/module-boundary.md`
 - `docs/runtime/focus-spatial-navigation.md`
@@ -72,7 +72,7 @@ This card does not authorize emulator execution, real Samsung TV validation, dep
 - Keep key routing inside the existing document `keydown` flow.
 - Preserve editable passthrough.
 - Keep module-owned diagnostics and exit UI outside normal content focus candidates.
-- Do not start Task 4.5.
+- Do not start Task 5.
 - Do not treat emulator evidence as final acceptance.
 
 ## Exact implementation target
@@ -86,7 +86,7 @@ This card does not authorize emulator execution, real Samsung TV validation, dep
 - Enter on Keep watching closes the modal and restores focus when possible.
 - Enter on End the app attempts Tizen app exit when available and records success or soft failure.
 - Missing document, history, focus, or Tizen application APIs never throw.
-- Diagnostics report Back resolution, exit state, exit result, key state, API availability, focus state, candidate count, and source/injection evidence required by Task 4.5.
+- Diagnostics report Back resolution, exit state, exit result, key state, API availability, focus state, candidate count, and source/injection evidence required by Task 5.
 - Tests cover the above boundaries without executing the emulator.
 
 ## Documentation obligations
@@ -123,14 +123,14 @@ git diff --check -- PLAN.md docs/agent docs/runtime docs/validation
 ## Done when
 
 - Back/Exit/Dialog behavior is explicit in code, tests, and docs.
-- Diagnostics expose the evidence needed by Task 4.5.
+- Diagnostics expose the evidence needed by Task 5.
 - Source freshness or injection evidence requirements are documented.
 - `npm run check:syntax` passes.
 - `npm run check:manifest` passes.
 - `npm test` passes.
 - Docs diff check passes.
 - No forbidden files were edited.
-- Task 4.5 remains queued and is not executed.
+- Task 5 remains queued and is not executed.
 
 ## Stop conditions
 
@@ -152,7 +152,7 @@ git diff --check -- PLAN.md docs/agent docs/runtime docs/validation
 ## Completion notes
 
 - Summary:
-  - Task 4e is complete. The final Task 4 runtime slice now implements and documents the Back, Exit, dialog, diagnostics, and source-evidence closeout that feeds the queued Task 4.5 bridge.
+  - Task 4e is complete. The final Task 4 runtime slice now implements and documents the Back, Exit, dialog, diagnostics, and source-evidence closeout that feeds the queued Task 5 bridge.
   - The smoke-validation evidence is now named explicitly: source marker `stremio-webapp-src-main-js-task4e-v1`, injection marker `stremio-webapp-runtime-injection-v1`, and `getState()` runtime markers `namespacePresent`, `initializedNamespace`, `styleMarkerPresent`, `diagnosticsPanelMarkerPresent`, `exitModalMarkerPresent`, `styleMarkerInjected`, `diagnosticsPanelCreated`, and `exitModalCreated`.
   - Diagnostics text now records the source marker, injection marker, injection evidence summary, diagnostics open state, last exit attempt, optional key registration summary, and the existing path/key/action/focus/candidate/back/exit/API fields.
 - Changed files:
@@ -173,6 +173,6 @@ git diff --check -- PLAN.md docs/agent docs/runtime docs/validation
   - Tests explicitly cover the Task 4e boundaries.
   - Docs match the runtime behavior for the local Task 4 closeout.
   - Task 4e docs/status closeout is complete.
-  - Task 4.5 remains queued and is not started.
+  - Task 5 remains queued and is not started.
 - Remaining risks:
   - Emulator smoke validation is still a bridge step and does not replace real Samsung TV acceptance.
