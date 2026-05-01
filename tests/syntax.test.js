@@ -509,7 +509,11 @@ test("src/main.js bootstraps with runtime state, diagnostics, and TV input helpe
   assert.equal(document.querySelector("[data-stremio-remote-diagnostics-panel='1']").dataset.open, "false");
   assert.equal(document.querySelector("[data-stremio-remote-exit-modal='1']").dataset.open, "false");
 
+  assert.equal(context[NAMESPACE], api);
   assert.equal(api.initialized, true);
+  assert.equal(typeof api.init, "function");
+  assert.equal(typeof api.injectStylesIfPossible, "function");
+  assert.equal(typeof api.registerOptionalKeys, "function");
   assert.equal(typeof api.getState, "function");
   assert.equal(typeof api.renderDiagnostics, "function");
 
@@ -527,10 +531,6 @@ test("src/main.js bootstraps with runtime state, diagnostics, and TV input helpe
   assert.equal(state.lastExitResult, null);
   assert.equal(state.lastBackResolution, null);
 
-  const snapshot = api.getState();
-  snapshot.registeredKeys.length = 0;
-  assert.ok(api.getState().registeredKeys.length > 0);
-
   assert.deepEqual(Array.from(api.registerOptionalKeys(["Back", "Info", "ColorF0Red"])), ["Info"]);
   assert.ok(api.getState().failedKeys.some((entry) => entry.keyName === "ColorF0Red"));
 });
@@ -547,14 +547,19 @@ test("src/main.js bootstrap is idempotent and keeps one listener, one style, one
       }
     }
   });
-  const firstInitTime = context[NAMESPACE].getState().initTime;
+  const firstNamespaceRef = context[NAMESPACE];
+  const firstInitTime = firstNamespaceRef.getState().initTime;
   const code = fs.readFileSync(mainScriptPath, "utf8");
   vm.runInContext(code, context, { filename: mainScriptPath });
+  const secondNamespaceRef = context[NAMESPACE];
 
   assert.equal(document.head.children.length, 1);
   assert.equal(document.listenerCount("keydown"), 1);
   assert.equal(document.body.children.length, 2);
-  assert.equal(context[NAMESPACE].getState().initTime, firstInitTime);
+  assert.equal(secondNamespaceRef, firstNamespaceRef);
+  assert.equal(secondNamespaceRef.initialized, true);
+  assert.equal(typeof secondNamespaceRef.getState, "function");
+  assert.equal(secondNamespaceRef.getState().initTime, firstInitTime);
 });
 
 test("src/main.js tolerates missing document and tizen objects", () => {
@@ -574,6 +579,58 @@ test("src/main.js tolerates missing document and tizen objects", () => {
   assert.equal(state.apiAvailability.tizen, false);
   assert.deepEqual(Array.from(state.registeredKeys), []);
   assert.deepEqual(Array.from(state.failedKeys), []);
+});
+
+test("src/main.js exposes missing tvinputdevice and missing application contract state without throwing", () => {
+  const { api } = bootstrapMainScript({
+    document: createMockDocument(),
+    location: {
+      pathname: "/missing-tvinputdevice-and-application"
+    },
+    tizen: {}
+  });
+
+  const state = api.getState();
+  assert.equal(state.initialized, true);
+  assert.equal(state.apiAvailability.tizen, true);
+  assert.equal(state.apiAvailability.tvInputDevice, false);
+  assert.equal(state.apiAvailability.application, false);
+  assert.deepEqual(Array.from(api.registerOptionalKeys(["Info", "MediaPlay"])), []);
+  assert.deepEqual(Array.from(api.getState().registeredKeys), []);
+  assert.deepEqual(Array.from(api.getState().failedKeys), []);
+});
+
+test("src/main.js getState returns defensive copies of namespace state", () => {
+  const { api, document } = bootstrapMainScript({
+    document: createMockDocument(),
+    location: {
+      pathname: "/defensive-copy"
+    },
+    tizen: {
+      tvinputdevice: {
+        registerKey(keyName) {
+          if (keyName === "ColorF0Red") {
+            throw new Error("unsupported");
+          }
+        }
+      }
+    }
+  });
+
+  dispatchKey(document, "Info", { code: "Info" });
+  const snapshot = api.getState();
+  snapshot.registeredKeys.length = 0;
+  snapshot.failedKeys.push({ keyName: "Injected", message: "tampered" });
+  snapshot.failedKeys[0].message = "tampered";
+  snapshot.apiAvailability.document = false;
+  snapshot.lastKey.key = "tampered";
+
+  const secondSnapshot = api.getState();
+  assert.ok(secondSnapshot.registeredKeys.length > 0);
+  assert.ok(secondSnapshot.failedKeys.every((entry) => entry.keyName !== "Injected"));
+  assert.notEqual(secondSnapshot.failedKeys[0].message, "tampered");
+  assert.equal(secondSnapshot.apiAvailability.document, true);
+  assert.equal(secondSnapshot.lastKey.key, "Info");
 });
 
 test("src/main.js toggles diagnostics through key events and closes on Back while open", () => {

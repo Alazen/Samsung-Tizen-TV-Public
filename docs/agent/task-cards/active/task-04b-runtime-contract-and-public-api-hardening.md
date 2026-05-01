@@ -125,6 +125,12 @@ node tests/syntax.test.js
 node tests/manifest.test.js
 ```
 
+Docs validation:
+
+```bash
+git diff --check -- docs/runtime docs/agent/task-cards/active/task-04b-runtime-contract-and-public-api-hardening.md
+```
+
 ## Done when
 
 - The public namespace contract is explicit in tests or docs.
@@ -155,3 +161,19 @@ Return a completion report with:
 - Validation commands and results
 - Acceptance status
 - Remaining risks
+
+## Completion notes
+
+- Runtime behavior did not require changes. `src/main.js` already satisfied the requested contract once the edge cases were made explicit in tests.
+- `tests/syntax.test.js` now asserts the exported namespace identity, required public methods, idempotent re-bootstrap, missing `tizen.tvinputdevice` and `tizen.application` handling, and defensive-copy behavior from `getState()`.
+- Runtime boundary and diagnostics docs now name the exported namespace contract, idempotent bootstrap, and soft-fail diagnostics behavior without widening scope into later Task 4 slices.
+- Validation evidence:
+  - `npm run check:syntax`
+  - `npm test`
+  - `git diff --check -- docs/runtime docs/agent/task-cards/active/task-04b-runtime-contract-and-public-api-hardening.md`
+- Acceptance status:
+  - Task 4b local hardening slice passed required local validation.
+  - Task 4.5 remains queued and was not started.
+- Remaining risks:
+  - The contract is explicit for the requested namespace cases, but external consumers can still mutate the exported namespace object itself if they choose.
+  - Git reported only LF-to-CRLF normalization warnings on edited text files during docs validation.
