@@ -15,7 +15,7 @@ If the local npm launcher is unavailable, use the direct Node equivalents:
 
 ## Docs-only or harness-only edits
 Use static checks first:
-- `git diff --check -- AGENTS.md docs/agent .agents/skills/stremio-task-executor/SKILL.md`
+- `git diff --check -- AGENTS.md docs/agent .agents/skills/stremio-task-executor/SKILL.md .agents/skills/harness-parity-live-served-verification/SKILL.md`
 
 If scripts are available and the TaskCard requires full regression, run the standard command set after static checks.
 
