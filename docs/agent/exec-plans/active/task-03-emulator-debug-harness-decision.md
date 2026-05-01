@@ -4,7 +4,8 @@
 - State: blocked
 - Current owner: Codex
 - Last updated: 2026-05-01
-- Next action: correct the fresh install/debug refresh recipe before treating emulator evidence as repeatable
+- Next action: keep Task 3 blocked until the real desktop user context can prove a deterministic fresh-code refresh path, or until a later Task 4 decomposition explicitly preserves the blocker and real-TV validation requirement.
+- Progress: Task 3A completed, Task 3B produced final blocker evidence, and Task 3C recorded Decision B plus the residual risks.
 
 ## Goal
 Choose and record the repeatable emulator debug harness path for bounded runtime work.

@@ -28,5 +28,34 @@ Use Samsung TV emulator checks for local runtime/tooling confidence.
   - `tz build -w C:\Users\gabip\GitHub\Stremio-WebApp\harness\CodexTvRuntimeCheck -b Debug` refreshed the ignored `Debug/` copy, but `tz pack -w C:\Users\gabip\GitHub\Stremio-WebApp\harness\CodexTvRuntimeCheck -t wgt` failed with `ERROR:Decryption error!`
   - because of that, the remaining branch checks were not treated as clean pass evidence from a fresh deployed build
 
+## Observed 2026-05-01 final unblock attempt (Codex sandbox identity)
+
+- Windows identity/context:
+  - `whoami` -> `gabi-pc\codexsandboxonline`
+  - project path: `C:\Users\gabip\GitHub\Stremio-WebApp\harness\CodexTvRuntimeCheck`
+- Pre-checks:
+  - `node -e "...repo source marker..."` confirmed `isInteractiveControl` in `harness/CodexTvRuntimeCheck/js/stremio-remote.js`
+  - `E:\tizen-studio\tools\sdb.exe devices` listed `emulator-26101 device T-samsung-10.0-x86_64`
+  - `git status --short --ignored harness/CodexTvRuntimeCheck` showed only ignored `Debug/` output
+- Fresh build path:
+  - command: `E:\tizen-studio\tools\tizen-core\tz.exe build -w C:\Users\gabip\GitHub\Stremio-WebApp\harness\CodexTvRuntimeCheck -b Debug`
+  - result: exit code `0` with no stdout
+  - generated debug JS paths were under:
+    - `harness/CodexTvRuntimeCheck/Debug/.wgt/CodexTvRuntimeCheck/js/stremio-remote.js`
+    - `harness/CodexTvRuntimeCheck/Debug/projects/CodexTvRuntimeCheck/js/stremio-remote.js`
+  - both generated copies contained `isInteractiveControl`
+  - SHA-256 parity matched repo source for all three files:
+    `157a26938024e8ab6c6d7aa476000960f0c37efb16cb0600226b467c553c617b`
+- Debug launch path:
+  - command (attempt 1): `E:\tizen-studio\tools\tizen-core\tz.exe run -d -e emulator-26101 -w C:\Users\gabip\GitHub\Stremio-WebApp\harness\CodexTvRuntimeCheck`
+  - output (attempt 1): `tz: error: command terminated after timeout`
+  - command (attempt 2): same command, same context
+  - output (attempt 2): `tz: error: command terminated after timeout`
+  - stop condition applied: same command failed twice for the same reason
+- Result:
+  - Web Inspector attachment: not observed in this attempt
+  - live served JS parity check via `fetch('js/stremio-remote.js')`: not possible in this attempt
+  - deterministic fresh-code emulator debug path remains unproven in the sandbox identity
+
 ## Limitations
 Emulator outcomes do not replace real-device acceptance for TizenBrew injection and physical remote behavior.

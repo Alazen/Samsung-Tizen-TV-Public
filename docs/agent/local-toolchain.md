@@ -162,6 +162,35 @@ Required evidence to record for this recipe:
     failed with `ERROR:Decryption error!` while generating the author
     signature, so the normal package/install path could not be completed.
 
+## Task 3B final unblock attempt evidence
+
+- Context:
+  - Date: `2026-05-01`
+  - Identity: `gabi-pc\codexsandboxonline` (`whoami`)
+  - Project: `C:\Users\gabip\GitHub\Stremio-WebApp\harness\CodexTvRuntimeCheck`
+- `E:\tizen-studio\tools\sdb.exe devices` still showed
+  `emulator-26101 device T-samsung-10.0-x86_64`.
+- `tz build` succeeded in this context:
+  - Command:
+    `E:\tizen-studio\tools\tizen-core\tz.exe build -w C:\Users\gabip\GitHub\Stremio-WebApp\harness\CodexTvRuntimeCheck -b Debug`
+  - Exit code: `0`
+  - stdout: empty
+  - Note: this build layout placed generated JS under
+    `Debug/.wgt/CodexTvRuntimeCheck/js/` and
+    `Debug/projects/CodexTvRuntimeCheck/js/`, not `Debug/js/`.
+  - Freshness marker/hash check:
+    both generated copies contained `isInteractiveControl` and matched the repo
+    SHA-256 `157a26938024e8ab6c6d7aa476000960f0c37efb16cb0600226b467c553c617b`.
+- `tz run -d` timed out twice in the same context:
+  - Command:
+    `E:\tizen-studio\tools\tizen-core\tz.exe run -d -e emulator-26101 -w C:\Users\gabip\GitHub\Stremio-WebApp\harness\CodexTvRuntimeCheck`
+  - Output on both attempts:
+    `tz: error: command terminated after timeout`
+  - TaskCard stop condition was applied after the second identical failure.
+- Because no new debug session attached, this attempt did not produce a fresh
+  Web Inspector websocket target and could not re-run live
+  `fetch('js/stremio-remote.js')` parity in this context.
+
 ## Tizen CLI log permissions
 
 - Observed error: Tizen CLI emitted `FileNotFoundException: E:\tizen-studio-data\cli\logs\cli.log (Acesso negado)`.

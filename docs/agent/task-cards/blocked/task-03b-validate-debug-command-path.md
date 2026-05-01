@@ -2,7 +2,7 @@
 
 ## Status
 
-- State: active
+- State: blocked
 - Parent ExecPlan: `docs/agent/exec-plans/active/task-03-emulator-debug-harness-decision.md`
 - Current owner: Codex
 - Last updated: 2026-05-01
@@ -29,7 +29,7 @@ Validate the preferred repeatable emulator debug command path for the repo-track
 
 - `docs/validation/emulator-validation.md`
 - `docs/agent/local-toolchain.md`
-- `docs/agent/task-cards/active/task-03b-validate-debug-command-path.md`
+- `docs/agent/task-cards/blocked/task-03b-validate-debug-command-path.md`
 - `docs/agent/known-risks.md`, only if new risk is discovered
 
 ## Files forbidden
@@ -105,6 +105,11 @@ git status --short
 
 ## Evidence captured
 
+- 2026-05-01 final unblock attempt context:
+  - identity: `gabi-pc\codexsandboxonline`
+  - harness path: `C:\Users\gabip\GitHub\Stremio-WebApp\harness\CodexTvRuntimeCheck`
+  - `E:\tizen-studio\tools\sdb.exe devices` still reported
+    `emulator-26101 device T-samsung-10.0-x86_64`
 - 2026-05-01 debug launch command:
   `E:\tizen-studio\tools\tizen-core\tz.exe run -d -e emulator-26101 -w C:\Users\gabip\GitHub\Stremio-WebApp\harness\CodexTvRuntimeCheck`
 - Web Inspector attachment resolved through:
@@ -124,9 +129,21 @@ git status --short
   repo-tracked harness file and the ignored `Debug/` build copy contained it.
 - `tz build -w C:\Users\gabip\GitHub\Stremio-WebApp\harness\CodexTvRuntimeCheck -b Debug`
   refreshed the ignored `Debug/` copy with the fix.
+- A later `tz build` recheck in the same day returned exit code `0` and
+  refreshed generated app copies under:
+  - `Debug/.wgt/CodexTvRuntimeCheck/js/stremio-remote.js`
+  - `Debug/projects/CodexTvRuntimeCheck/js/stremio-remote.js`
+  Both contained `isInteractiveControl` and matched the repo SHA-256 hash
+  `157a26938024e8ab6c6d7aa476000960f0c37efb16cb0600226b467c553c617b`.
 - `tz pack -w C:\Users\gabip\GitHub\Stremio-WebApp\harness\CodexTvRuntimeCheck -t wgt`
   failed with `ERROR:Decryption error!` while generating the author signature,
   so the normal fresh install path could not be completed in this session.
+- Final unblock attempt stop condition:
+  `tz run -d -e emulator-26101 -w C:\Users\gabip\GitHub\Stremio-WebApp\harness\CodexTvRuntimeCheck`
+  failed twice with the same output:
+  `tz: error: command terminated after timeout`.
+  No new Web Inspector endpoint was produced in that context, so live served JS
+  parity could not be revalidated in the final attempt.
 - Real Samsung TV Tizen 8.0 validation remains required.
 
 ## Done when
@@ -152,3 +169,14 @@ git status --short
 - Validation run:
 - Result:
 - Risks:
+
+## Blocking summary
+
+- Blocking reason:
+  - A deterministic fresh-code refresh path is still unproven. `tz pack -w <project-path> -t wgt` failed with `ERROR:Decryption error!`, and the final `tz run -d` attempt in `gabi-pc\codexsandboxonline` timed out twice with `tz: error: command terminated after timeout`.
+- Evidence observed:
+  - Repo source and generated build outputs matched the `isInteractiveControl` freshness marker and SHA-256 hash, but no new Web Inspector target was produced in the final sandbox attempt, so live served-JS parity could not be revalidated there.
+- Approval or input needed:
+  - Re-run the debug/package path in the real desktop user context that owns the working Samsung certificate profile, without exposing signing secrets in the repo or the thread.
+- Safe next action:
+  - Preserve Decision B in the Task 3 records and ensure any later Task 4 decomposition states that emulator evidence is limited and real Samsung TV validation remains mandatory.

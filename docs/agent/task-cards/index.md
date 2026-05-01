@@ -47,20 +47,26 @@ A blocked TaskCard must include:
 - What approval or input is needed.
 - Safe next action.
 
+## Task 3 status
+
+- Task 3A: `completed/task-03a-create-debug-harness-taskcards.md` - completed
+- Task 3B: `blocked/task-03b-validate-debug-command-path.md` - blocked
+- Task 3C: `completed/task-03c-record-debug-harness-decision.md` - completed
+
 ## Active TaskCards
 
-- Task 3A: `active/task-03a-create-debug-harness-taskcards.md`
-- Task 3B: `active/task-03b-validate-debug-command-path.md`
-- Task 3C: `active/task-03c-record-debug-harness-decision.md`
+- None currently recorded.
 
 ## Completed TaskCards
 
 - Task 1: `completed/task-01-detailed-plan.md`
 - Task 2: `completed/task-02-tizen-studio-tv-emulator-setup.md`
+- Task 3A: `completed/task-03a-create-debug-harness-taskcards.md`
+- Task 3C: `completed/task-03c-record-debug-harness-decision.md`
 
 ## Blocked TaskCards
 
-- None currently recorded.
+- Task 3B: `blocked/task-03b-validate-debug-command-path.md`
 
 ## Promotion rules
 

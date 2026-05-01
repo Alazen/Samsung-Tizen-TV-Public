@@ -29,3 +29,9 @@
 - Risk: `tz pack -w <project-path> -t wgt` stopped with `ERROR:Decryption error!` while generating the author signature for the harness package.
 - Impact: the normal package/install path from the official Tizen run/debug flow cannot currently be used to prove a repeatable fresh deploy from the repo.
 - Mitigation: keep Task 3 blocked until the active certificate profile can be used non-interactively in the current user context or a documented alternative refresh path is verified.
+
+## R-006: `tz run -d` can timeout in the Codex sandbox identity
+- Date: 2026-05-01
+- Risk: in `gabi-pc\codexsandboxonline`, `tz run -d -e emulator-26101 -w <project-path>` can fail with `tz: error: command terminated after timeout` even while `sdb devices` shows the emulator online.
+- Impact: the debug launch may fail before producing a Web Inspector endpoint, blocking live served-JS freshness verification in that context.
+- Mitigation: treat this identity-specific timeout as a blocker for sandbox-run evidence; re-run under the real desktop user context when available and continue enforcing served-source parity checks.

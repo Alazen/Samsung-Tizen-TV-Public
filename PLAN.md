@@ -2,15 +2,16 @@
 
 ## Current status
 
-Current task: Task 3, Emulator Debug Harness Decision (blocked on a repeatable fresh install/debug refresh path).
+Task 3, Emulator Debug Harness Decision, is closed as blocked on a repeatable fresh install/debug refresh path.
+Task 4 is not started. It may be decomposed only if its TaskCards explicitly preserve Decision B, the stale-launch risk, the signing/decryption blocker, and the requirement for real Samsung TV validation.
 
 Active plan:
 - `docs/agent/exec-plans/active/task-03-emulator-debug-harness-decision.md`
 
-Active TaskCards:
-- Task 3A: `docs/agent/task-cards/active/task-03a-create-debug-harness-taskcards.md`
-- Task 3B: `docs/agent/task-cards/active/task-03b-validate-debug-command-path.md`
-- Task 3C: `docs/agent/task-cards/active/task-03c-record-debug-harness-decision.md`
+Task 3 status:
+- Task 3A: `docs/agent/task-cards/completed/task-03a-create-debug-harness-taskcards.md` - completed
+- Task 3B: `docs/agent/task-cards/blocked/task-03b-validate-debug-command-path.md` - blocked
+- Task 3C: `docs/agent/task-cards/completed/task-03c-record-debug-harness-decision.md` - completed
 
 TaskCard index:
 - `docs/agent/task-cards/index.md`

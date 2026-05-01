@@ -2,10 +2,10 @@
 
 ## Status
 
-- State: active
+- State: completed
 - Parent ExecPlan: `docs/agent/exec-plans/active/task-03-emulator-debug-harness-decision.md`
-- Current owner: unassigned
-- Last updated: 2026-04-30
+- Current owner: Codex
+- Last updated: 2026-05-01
 
 ## Objective
 
@@ -96,3 +96,18 @@ git diff --check -- PLAN.md docs/agent
 - Validation run:
 - Result:
 - Risks:
+
+## Completion report
+
+- Changed files:
+  - `PLAN.md`
+  - `docs/agent/task-cards/index.md`
+  - `docs/agent/task-cards/completed/task-03a-create-debug-harness-taskcards.md`
+  - `docs/agent/task-cards/blocked/task-03b-validate-debug-command-path.md`
+  - `docs/agent/task-cards/completed/task-03c-record-debug-harness-decision.md`
+- Validation run:
+  - `git diff --check -- PLAN.md docs/agent/task-cards`
+- Result:
+  - Task 3A, Task 3B, and Task 3C were created, tracked, and wired into the Task 3 routing docs.
+- Risks:
+  - Downstream Task 3B evidence still controls whether Task 3 can be treated as repeatable or must remain blocked.
