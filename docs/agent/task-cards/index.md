@@ -57,6 +57,7 @@ A blocked TaskCard must include:
 ## Active TaskCards
 
 - Task 4a: `active/task-04a-runtime-core-inventory-and-slice-plan.md` - reconcile the already-implemented runtime core, define the bounded 4b through 4f Task 4 slices, and keep Task 4.5 queued until a Task 4 slice passes local validation
+- Task 4b: `active/task-04b-runtime-contract-and-public-api-hardening.md` - harden the stable runtime namespace contract, idempotent re-bootstrap, missing API tolerance, and public state safety before broader runtime changes
 - Task 4.5a: `active/task-04-5a-prepare-emulator-stremio-smoke-checklist.md` - prepare the canonical smoke checklist, queued behind Task 4 local validation
 - Task 4.5b: `active/task-04-5b-define-served-source-and-injection-evidence.md` - define source freshness and injection evidence, queued behind Task 4 local validation
 - Task 4.5c: `active/task-04-5c-run-emulator-stremio-smoke-validation.md` - run the emulator smoke validation after Task 4 local validation passes
