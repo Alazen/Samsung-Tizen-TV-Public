@@ -535,6 +535,39 @@ test("src/main.js bootstraps with runtime state, diagnostics, and TV input helpe
   assert.ok(api.getState().failedKeys.some((entry) => entry.keyName === "ColorF0Red"));
 });
 
+test("src/main.js registerOptionalKeys skips mandatory keys while allowing Info registration", () => {
+  const registerCalls = [];
+  const { api } = bootstrapMainScript({
+    document: createMockDocument(),
+    location: {
+      pathname: "/register-optional-keys"
+    },
+    tizen: {
+      tvinputdevice: {
+        registerKey(keyName) {
+          registerCalls.push(keyName);
+        }
+      }
+    }
+  });
+
+  registerCalls.length = 0;
+  const registeredKeys = Array.from(api.registerOptionalKeys([
+    "ArrowLeft",
+    "ArrowRight",
+    "ArrowUp",
+    "ArrowDown",
+    "Enter",
+    "Back",
+    "Info"
+  ]));
+
+  assert.deepEqual(registeredKeys, ["Info"]);
+  assert.deepEqual(registerCalls, ["Info"]);
+  assert.deepEqual(Array.from(api.getState().registeredKeys), ["Info"]);
+  assert.deepEqual(Array.from(api.getState().failedKeys), []);
+});
+
 test("src/main.js bootstrap is idempotent and keeps one listener, one style, one diagnostics panel, and one exit modal", () => {
   const { context, document } = bootstrapMainScript({
     document: createMockDocument(),
@@ -1098,41 +1131,118 @@ test("src/main.js uses history.back only when the current history state is eligi
   assert.equal(ineligibleRuntime.api.getState().exitModalOpen, true);
 });
 
-test("src/main.js preserves editable-context passthrough groundwork", () => {
-  const code = fs.readFileSync(mainScriptPath, "utf8");
+test("src/main.js routes keydown at the document level and preserves active editable passthrough", () => {
   const document = createMockDocument();
   const input = createMockElement("input");
+  const button = createMockElement("button", {
+    rect: { left: 40, top: 40, width: 160, height: 60 }
+  });
+  button.setAttribute("role", "button");
   document.body.appendChild(input);
+  document.body.appendChild(button);
   document.activeElement = input;
-  const context = {
-    Date,
+
+  const { api } = bootstrapMainScript({
+    document,
     tizen: {
       tvinputdevice: {
         registerKey() {}
       }
+    }
+  });
+
+  assert.equal(document.listenerCount("keydown"), 1);
+
+  const editableArrowEvent = dispatchKey(document, "ArrowRight", {
+    code: "ArrowRight"
+  });
+  assert.equal(editableArrowEvent.defaultPrevented, false);
+  assert.equal(editableArrowEvent.propagationStopped, false);
+  assert.equal(api.getState().lastConsumedAction, null);
+  assert.equal(api.getState().lastKey.key, "ArrowRight");
+  assert.equal(api.getState().lastKey.editable, true);
+
+  document.activeElement = null;
+  const navigationArrowEvent = dispatchKey(document, "ArrowRight", {
+    code: "ArrowRight"
+  });
+  assert.equal(navigationArrowEvent.defaultPrevented, true);
+  assert.match(api.getState().lastConsumedAction, /^focus:seed:/);
+});
+
+test("src/main.js preserves editable-context passthrough for input, textarea, select, and textbox-style surfaces", () => {
+  const editableTargets = [
+    {
+      name: "input",
+      element: createMockElement("input")
     },
-    document
-  };
+    {
+      name: "textarea",
+      element: createMockElement("textarea")
+    },
+    {
+      name: "select",
+      element: createMockElement("select")
+    },
+    {
+      name: "contenteditable=true attribute",
+      element: createMockElement("div", { contentEditable: "true" })
+    },
+    {
+      name: "isContentEditable=true property",
+      element: createMockElement("div", { isContentEditable: true })
+    },
+    {
+      name: "role=textbox surface",
+      element: (() => {
+        const element = createMockElement("div");
+        element.setAttribute("role", "textbox");
+        return element;
+      })()
+    }
+  ];
 
-  vm.createContext(context);
-  vm.runInContext(code, context, { filename: mainScriptPath });
+  for (const { name, element } of editableTargets) {
+    const document = createMockDocument();
+    const navigationCandidate = createMockElement("button", {
+      rect: { left: 40, top: 40, width: 160, height: 60 }
+    });
+    navigationCandidate.setAttribute("role", "button");
+    document.body.appendChild(element);
+    document.body.appendChild(navigationCandidate);
 
-  const arrowEvent = createKeyEvent("ArrowRight", {
-    code: "ArrowRight",
-    target: input
-  });
-  document.dispatch("keydown", arrowEvent);
-  const enterEvent = createKeyEvent("Enter", {
-    code: "Enter",
-    target: input
-  });
-  document.dispatch("keydown", enterEvent);
+    const { api } = bootstrapMainScript({
+      document,
+      tizen: {
+        tvinputdevice: {
+          registerKey() {}
+        }
+      }
+    });
 
-  const state = context[NAMESPACE].getState();
-  assert.equal(arrowEvent.defaultPrevented, false);
-  assert.equal(enterEvent.defaultPrevented, false);
-  assert.equal(state.lastConsumedAction, null);
-  assert.equal(state.lastKey.editable, true);
+    const arrowKeys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"];
+    for (const key of arrowKeys) {
+      const arrowEvent = dispatchKey(document, key, {
+        code: key,
+        target: element
+      });
+      assert.equal(arrowEvent.defaultPrevented, false, `${name} ${key} passthrough should be preserved`);
+      assert.equal(arrowEvent.propagationStopped, false, `${name} ${key} propagation should remain untouched`);
+    }
+
+    const enterEvent = dispatchKey(document, "Enter", {
+      code: "Enter",
+      target: element
+    });
+    const state = api.getState();
+
+    assert.equal(enterEvent.defaultPrevented, false, `${name} enter passthrough should be preserved`);
+    assert.equal(enterEvent.propagationStopped, false, `${name} enter propagation should remain untouched`);
+    assert.equal(state.lastConsumedAction, null, `${name} should not trigger runtime key consumption`);
+    assert.equal(state.lastKey.editable, true, `${name} should be detected as editable`);
+    assert.equal(navigationCandidate.clickCount, 0, `${name} should not trigger focused activation`);
+    assert.equal(navigationCandidate.getAttribute("data-stremio-remote-focus"), null, `${name} should not seed runtime focus`);
+  }
 });
 
 test("src/main.js discovers visible navigation candidates, excludes diagnostics internals, and seeds focus from the first arrow key", () => {

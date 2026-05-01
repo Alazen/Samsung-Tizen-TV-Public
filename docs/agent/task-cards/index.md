@@ -56,8 +56,6 @@ A blocked TaskCard must include:
 
 ## Active TaskCards
 
-- Task 4a: `active/task-04a-runtime-core-inventory-and-slice-plan.md` - reconcile the already-implemented runtime core, define the bounded 4b through 4f Task 4 slices, and keep Task 4.5 queued until a Task 4 slice passes local validation
-- Task 4c: `active/task-04c-remote-key-routing-and-editable-safety.md` - bound remote key routing to document `keydown`, preserve editable passthrough, and keep optional key registration manifest-driven without widening into later runtime slices
 - Task 4.5a: `active/task-04-5a-prepare-emulator-stremio-smoke-checklist.md` - queued behind Task 4 local validation; prepare the canonical smoke checklist only after a Task 4 runtime slice passes locally
 - Task 4.5b: `active/task-04-5b-define-served-source-and-injection-evidence.md` - queued behind Task 4 local validation; define source freshness and injection evidence for the emulator bridge
 - Task 4.5c: `active/task-04-5c-run-emulator-stremio-smoke-validation.md` - queued behind Task 4 local validation and 4.5a/4.5b; run the emulator smoke validation only after the bridge is ready
@@ -69,7 +67,9 @@ A blocked TaskCard must include:
 - Task 2: `completed/task-02-tizen-studio-tv-emulator-setup.md`
 - Task 3A: `completed/task-03a-create-debug-harness-taskcards.md`
 - Task 3C: `completed/task-03c-record-debug-harness-decision.md`
+- Task 4a: `completed/task-04a-runtime-core-inventory-and-slice-plan.md`
 - Task 4b: `completed/task-04b-runtime-contract-and-public-api-hardening.md`
+- Task 4c: `completed/task-04c-remote-key-routing-and-editable-safety.md` - completed local validation for document-level key routing, editable passthrough, and optional key separation
 
 ## Blocked TaskCards
 

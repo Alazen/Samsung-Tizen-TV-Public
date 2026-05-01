@@ -2,7 +2,7 @@
 
 ## Status
 
-- State: active
+- State: completed
 - Parent ExecPlan: `docs/agent/exec-plans/active/task-04-runtime-core.md`
 - Current owner: Codex
 - Last updated: 2026-05-01
@@ -15,7 +15,7 @@ This card does not authorize focus-candidate heuristics, back/exit policy expans
 
 ## Parent context
 
-Task 4 is the active runtime-core implementation track. Task 4b passed local validation and is now execution history. Task 4.5 remains queued as an emulator bridge and is not final acceptance.
+Task 4 is the active runtime-core implementation track. Task 4a is completed as the docs-only inventory and slice-plan step. Task 4b and Task 4c both passed local validation and are now execution history. Task 4.5 remains queued as an emulator bridge and is not final acceptance.
 
 This TaskCard exists so the next runtime behavior work stays narrow before Task 4d, Task 4e, and Task 4f address later slices.
 
@@ -149,3 +149,33 @@ git diff --check -- docs/runtime docs/agent/task-cards/active/task-04c-remote-ke
 - Validation commands and results
 - Acceptance status
 - Remaining risks
+
+## Completion notes
+
+- Summary:
+  - `src/main.js` already satisfied the Task 4c routing boundary, editable safety, and optional-key separation requirements.
+  - The completion work tightened tests and docs instead of changing runtime behavior.
+- Changed files:
+  - `tests/syntax.test.js`
+  - `docs/runtime/module-boundary.md`
+  - `docs/runtime/focus-spatial-navigation.md`
+  - `docs/runtime/back-exit.md`
+  - `docs/agent/task-cards/index.md`
+  - `docs/agent/exec-plans/active/task-04-runtime-core.md`
+  - `docs/agent/task-cards/completed/task-04a-runtime-core-inventory-and-slice-plan.md`
+  - `docs/agent/task-cards/completed/task-04c-remote-key-routing-and-editable-safety.md`
+- Validation commands and results:
+  - `npm run check:syntax` - passed
+  - `npm run check:manifest` - passed
+  - `npm test` - passed
+  - `git diff --check -- PLAN.md docs/agent docs/runtime` - passed with LF/CRLF normalization warnings only
+  - `git diff --check -- docs/runtime docs/agent/task-cards/active/task-04c-remote-key-routing-and-editable-safety.md` - passed with LF/CRLF normalization warnings only before the completion move
+- Acceptance status:
+  - Document-level `keydown` routing is explicit in tests and docs.
+  - Editable passthrough coverage now includes `input`, `textarea`, `select`, `contenteditable`, `isContentEditable`, and `role="textbox"` surfaces.
+  - Optional registered keys remain separate from mandatory key ownership.
+  - No forbidden files were edited.
+  - Task 4.5 remains queued.
+- Remaining risks:
+  - `lastKey.editable` still reflects `event.target` rather than editable state inferred only from `document.activeElement`, even though passthrough behavior itself is correct.
+  - Task 4d still needs its own ready TaskCard before the next implementation slice begins.

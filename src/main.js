@@ -1585,7 +1585,12 @@
   }
 
   function handleKeydown(event) {
+    var editableContext = isEditableContext(event);
+
     state.lastKey = normalizeKeyEvent(event);
+    if (editableContext) {
+      state.lastKey.editable = true;
+    }
     state.lastConsumedAction = null;
 
     if (isDiagnosticsToggleKey(state.lastKey.key)) {
@@ -1613,7 +1618,7 @@
       return;
     }
 
-    if (isEditableContext(event)) {
+    if (editableContext) {
       renderDiagnostics();
       return;
     }
