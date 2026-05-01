@@ -4,7 +4,7 @@
 - State: active
 - Current owner: Codex
 - Last updated: 2026-05-01
-- Next action: execute the merged Task 4e/4f runtime slice for Back, Exit, dialog behavior, diagnostics, and source-evidence prep; keep Task 4.5 queued until this local slice passes validation.
+- Next action: perform a Task 4.5 bridge readiness review for the smoke-validation markers and keep the emulator bridge queued until the team explicitly starts it.
 
 ## Goal
 Implement the thin TV-focused runtime control layer without replacing Stremio Web.
@@ -14,14 +14,13 @@ Durable runtime behavior is defined in `docs/runtime/*.md`; this plan tracks exe
 Task 4a is completed as the docs-only inventory and slice-plan step.
 Task 4b and Task 4c are completed local-validation slices.
 Task 4d is completed as a local-validation slice.
-Task 4e and Task 4f are intentionally merged into one bounded final Task 4 runtime slice.
-Task 4.5 remains queued until Task 4 local validation passes.
+Task 4e is completed as the final local-validation slice for Back, Exit, dialog behavior, diagnostics, and source-evidence prep.
+Task 4.5 remains queued until the bridge readiness review is complete and the team explicitly starts the emulator bridge.
 
 ## Steps
-1. Execute the merged Task 4e/4f TaskCard.
-2. Keep the implementation bounded to Back, Exit, dialog behavior, diagnostics, and source-evidence prep.
-3. Run local validation after the merged slice.
-4. Keep Task 4.5 queued until the team explicitly starts the emulator bridge.
+1. Confirm the completed Task 4e closeout and the named smoke-validation markers.
+2. Keep Task 4.5 queued while the bridge readiness review is prepared.
+3. Do not start the emulator bridge until the team explicitly starts it.
 
 ## Planned slices
 
@@ -29,7 +28,7 @@ Task 4.5 remains queued until Task 4 local validation passes.
 2. Task 4b: runtime contract and public API hardening. Completed.
 3. Task 4c: remote key routing and editable safety. Completed.
 4. Task 4d: focus candidate navigation. Completed.
-5. Task 4e: merged Back, Exit, dialog behavior, diagnostics, and source-evidence prep. Active.
+5. Task 4e: merged Back, Exit, dialog behavior, diagnostics, and source-evidence prep. Completed.
 
 ## Validation commands
 - `npm run check:syntax`

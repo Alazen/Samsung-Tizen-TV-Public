@@ -2,7 +2,7 @@
 
 ## Status
 
-- State: active
+- State: completed
 - Parent ExecPlan: `docs/agent/exec-plans/active/task-04-runtime-core.md`
 - Current owner: Codex
 - Last updated: 2026-05-01
@@ -43,7 +43,7 @@ This card does not authorize emulator execution, real Samsung TV validation, dep
 - `docs/runtime/back-exit.md`
 - `docs/runtime/module-boundary.md`
 - `docs/validation/emulator-stremio-web-smoke-validation.md`
-- `docs/agent/task-cards/active/task-04e-back-exit-dialog-diagnostics-and-source-evidence-prep.md`
+- `docs/agent/task-cards/completed/task-04e-back-exit-dialog-diagnostics-and-source-evidence-prep.md`
 - `docs/agent/task-cards/index.md`
 - `docs/agent/exec-plans/active/task-04-runtime-core.md`
 - `PLAN.md`
@@ -148,3 +148,31 @@ git diff --check -- PLAN.md docs/agent docs/runtime docs/validation
 - Validation commands and results
 - Acceptance status
 - Remaining risks
+
+## Completion notes
+
+- Summary:
+  - Task 4e is complete. The final Task 4 runtime slice now implements and documents the Back, Exit, dialog, diagnostics, and source-evidence closeout that feeds the queued Task 4.5 bridge.
+  - The smoke-validation evidence is now named explicitly: source marker `stremio-webapp-src-main-js-task4e-v1`, injection marker `stremio-webapp-runtime-injection-v1`, and `getState()` runtime markers `namespacePresent`, `initializedNamespace`, `styleMarkerPresent`, `diagnosticsPanelMarkerPresent`, `exitModalMarkerPresent`, `styleMarkerInjected`, `diagnosticsPanelCreated`, and `exitModalCreated`.
+  - Diagnostics text now records the source marker, injection marker, injection evidence summary, diagnostics open state, last exit attempt, optional key registration summary, and the existing path/key/action/focus/candidate/back/exit/API fields.
+- Changed files:
+  - `src/main.js`
+  - `tests/syntax.test.js`
+  - `docs/agent/task-cards/completed/task-04e-back-exit-dialog-diagnostics-and-source-evidence-prep.md`
+  - `docs/agent/task-cards/index.md`
+  - `docs/agent/exec-plans/active/task-04-runtime-core.md`
+  - `PLAN.md`
+  - `docs/validation/emulator-stremio-web-smoke-validation.md`
+- Validation commands and results:
+  - `npm run check:syntax` - passed
+  - `npm run check:manifest` - passed
+  - `npm test` - passed
+  - `git diff --check -- PLAN.md docs/agent docs/runtime docs/validation` - passed
+- Acceptance status:
+  - Back, Exit, dialog, diagnostics, and source-evidence behavior are implemented or verified in code.
+  - Tests explicitly cover the Task 4e boundaries.
+  - Docs match the runtime behavior for the local Task 4 closeout.
+  - Task 4e docs/status closeout is complete.
+  - Task 4.5 remains queued and is not started.
+- Remaining risks:
+  - Emulator smoke validation is still a bridge step and does not replace real Samsung TV acceptance.

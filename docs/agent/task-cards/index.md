@@ -56,7 +56,6 @@ A blocked TaskCard must include:
 
 ## Active TaskCards
 
-- Task 4e: `active/task-04e-back-exit-dialog-diagnostics-and-source-evidence-prep.md` - active merged 4e/4f runtime slice for Back, Exit, dialog behavior, diagnostics, and source-evidence prep
 - Task 4.5a: `active/task-04-5a-prepare-emulator-stremio-smoke-checklist.md` - queued behind Task 4 local validation; prepare the canonical smoke checklist only after a Task 4 runtime slice passes locally
 - Task 4.5b: `active/task-04-5b-define-served-source-and-injection-evidence.md` - queued behind Task 4 local validation; define source freshness and injection evidence for the emulator bridge
 - Task 4.5c: `active/task-04-5c-run-emulator-stremio-smoke-validation.md` - queued behind Task 4 local validation and 4.5a/4.5b; run the emulator smoke validation only after the bridge is ready
@@ -72,6 +71,7 @@ A blocked TaskCard must include:
 - Task 4b: `completed/task-04b-runtime-contract-and-public-api-hardening.md`
 - Task 4c: `completed/task-04c-remote-key-routing-and-editable-safety.md` - completed local validation for document-level key routing, editable passthrough, and optional key separation
 - Task 4d: `completed/task-04d-focus-candidate-navigation.md` - completed local validation for focus candidate filtering, geometry navigation, module-owned UI exclusion, and soft-fail behavior
+- Task 4e: `completed/task-04e-back-exit-dialog-diagnostics-and-source-evidence-prep.md` - completed local validation for Back/Exit/dialog behavior, diagnostics evidence, and explicit source/injection markers
 
 ## Blocked TaskCards
 

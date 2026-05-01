@@ -520,11 +520,21 @@ test("src/main.js bootstraps with runtime state, diagnostics, and TV input helpe
   const state = api.getState();
   assert.equal(state.initialized, true);
   assert.equal(typeof state.initTime, "number");
+  assert.equal(state.sourceMarker, "stremio-webapp-src-main-js-task4e-v1");
+  assert.equal(state.injectionMarker, "stremio-webapp-runtime-injection-v1");
   assert.ok(state.registeredKeys.includes("Info"));
   assert.ok(state.failedKeys.some((entry) => entry.keyName === "ColorF0Red"));
   assert.equal(state.apiAvailability.document, true);
   assert.equal(state.apiAvailability.tvInputDevice, true);
   assert.equal(state.apiAvailability.application, false);
+  assert.equal(state.runtimeMarkers.namespacePresent, true);
+  assert.equal(state.runtimeMarkers.initializedNamespace, true);
+  assert.equal(state.runtimeMarkers.styleMarkerPresent, true);
+  assert.equal(state.runtimeMarkers.diagnosticsPanelMarkerPresent, true);
+  assert.equal(state.runtimeMarkers.exitModalMarkerPresent, true);
+  assert.equal(state.runtimeMarkers.styleMarkerInjected, true);
+  assert.equal(state.runtimeMarkers.diagnosticsPanelCreated, true);
+  assert.equal(state.runtimeMarkers.exitModalCreated, true);
   assert.equal(state.diagnosticsOpen, false);
   assert.equal(state.exitModalOpen, false);
   assert.equal(state.lastExitAttempt, null);
@@ -610,6 +620,13 @@ test("src/main.js tolerates missing document and tizen objects", () => {
   assert.equal(state.initialized, true);
   assert.equal(state.apiAvailability.document, false);
   assert.equal(state.apiAvailability.tizen, false);
+  assert.equal(state.sourceMarker, "stremio-webapp-src-main-js-task4e-v1");
+  assert.equal(state.injectionMarker, "stremio-webapp-runtime-injection-v1");
+  assert.equal(state.runtimeMarkers.namespacePresent, true);
+  assert.equal(state.runtimeMarkers.initializedNamespace, true);
+  assert.equal(state.runtimeMarkers.styleMarkerPresent, false);
+  assert.equal(state.runtimeMarkers.diagnosticsPanelMarkerPresent, false);
+  assert.equal(state.runtimeMarkers.exitModalMarkerPresent, false);
   assert.deepEqual(Array.from(state.registeredKeys), []);
   assert.deepEqual(Array.from(state.failedKeys), []);
 });
@@ -656,6 +673,8 @@ test("src/main.js getState returns defensive copies of namespace state", () => {
   snapshot.failedKeys.push({ keyName: "Injected", message: "tampered" });
   snapshot.failedKeys[0].message = "tampered";
   snapshot.apiAvailability.document = false;
+  snapshot.runtimeMarkers.namespacePresent = false;
+  snapshot.sourceMarker = "tampered";
   snapshot.lastKey.key = "tampered";
 
   const secondSnapshot = api.getState();
@@ -663,6 +682,8 @@ test("src/main.js getState returns defensive copies of namespace state", () => {
   assert.ok(secondSnapshot.failedKeys.every((entry) => entry.keyName !== "Injected"));
   assert.notEqual(secondSnapshot.failedKeys[0].message, "tampered");
   assert.equal(secondSnapshot.apiAvailability.document, true);
+  assert.equal(secondSnapshot.runtimeMarkers.namespacePresent, true);
+  assert.equal(secondSnapshot.sourceMarker, "stremio-webapp-src-main-js-task4e-v1");
   assert.equal(secondSnapshot.lastKey.key, "Info");
 });
 
@@ -696,7 +717,13 @@ test("src/main.js toggles diagnostics through key events and closes on Back whil
   const panelBody = panel.querySelector("[data-stremio-remote-diagnostics-body='1']");
   assert.equal(panel.dataset.open, "true");
   assert.match(panelBody.textContent, /Stremio Web TV Remote Diagnostics/);
+  assert.match(panelBody.textContent, /Source marker: stremio-webapp-src-main-js-task4e-v1/);
+  assert.match(panelBody.textContent, /Injection marker: stremio-webapp-runtime-injection-v1/);
+  assert.match(panelBody.textContent, /Injection evidence: namespace=true, initialized=true, style-marker=true, diagnostics-marker=true, exit-marker=true/);
   assert.match(panelBody.textContent, /Path: \/diagnostics/);
+  assert.match(panelBody.textContent, /Diagnostics open: true/);
+  assert.match(panelBody.textContent, /Last exit attempt: \(none\)/);
+  assert.match(panelBody.textContent, /Optional key registration: registered=\d+, failed=\d+, apiAvailable=true/);
 
   const closeEvent = createKeyEvent("Back", { code: "BrowserBack" });
   document.dispatch("keydown", closeEvent);
