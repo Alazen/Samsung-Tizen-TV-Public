@@ -2,7 +2,7 @@
 
 ## Status
 
-- State: active
+- State: completed
 - Parent ExecPlan: `docs/agent/exec-plans/active/task-05-emulator-stremio-web-smoke-validation.md`
 - Current owner: Codex
 - Last updated: 2026-05-01
@@ -95,7 +95,7 @@ git diff --check -- PLAN.md docs/agent docs/validation
 - The checklist explicitly says how to capture module injection or load evidence.
 - The checklist makes stale-source observations blocked until freshness is proven.
 - The Task 5 bridge points to the smoke checklist.
-- TaskCard routing shows only Task 5a and Task 5b as active Task 5 slices.
+- TaskCard routing shows Task 5a and Task 5b as the only Task 5 slices, with Task 5a promoted to completed and Task 5b remaining active.
 - No runtime source files are changed.
 
 ## Stop conditions
@@ -111,3 +111,25 @@ git diff --check -- PLAN.md docs/agent docs/validation
 - Validation run:
 - Result:
 - Risks:
+
+## Completion notes
+
+- Summary:
+  - Task 5a is complete as a docs-only slice.
+  - The smoke checklist and bridge evidence rubric are documented, including the source freshness and module load proof requirements.
+  - Stale numbering in the bridge wording is aligned to Task 6 real-TV acceptance.
+- Changed files:
+  - `PLAN.md`
+  - `docs/agent/task-cards/completed/task-05a-prepare-emulator-stremio-smoke-checklist.md`
+  - `docs/agent/task-cards/index.md`
+  - `docs/agent/exec-plans/active/task-05-emulator-stremio-web-smoke-validation.md`
+  - `docs/agent/exec-plans/index.md`
+  - `docs/validation/emulator-stremio-web-smoke-validation.md`
+- Validation run:
+  - `git diff --check -- PLAN.md docs/agent docs/validation` - passed
+- Result:
+  - Task 5a acceptance criteria for docs routing and checklist readiness are satisfied.
+  - Task 5b is the next gated slice and remains required before Task 6 execution.
+- Risks:
+  - Emulator smoke execution evidence is still pending in Task 5b.
+  - Real Samsung TV acceptance remains exclusively in Task 6.

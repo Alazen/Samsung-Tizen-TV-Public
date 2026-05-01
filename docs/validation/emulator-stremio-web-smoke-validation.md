@@ -1,6 +1,6 @@
 # Emulator Stremio Web Smoke Validation
 
-This smoke validation bridges Task 4 runtime slices to Task 5 real-TV acceptance by checking the repo-tracked module against `https://web.stremio.com/` in the Samsung TV emulator.
+This smoke validation bridges Task 4 runtime slices to Task 6 real-TV acceptance by checking the repo-tracked module against `https://web.stremio.com/` in the Samsung TV emulator.
 
 ## Preconditions
 

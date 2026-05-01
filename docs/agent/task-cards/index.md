@@ -56,8 +56,7 @@ A blocked TaskCard must include:
 
 ## Active TaskCards
 
-- Task 5a: `active/task-05a-prepare-emulator-stremio-smoke-checklist.md` - queued behind Task 4 local validation; prepare the bridge readiness checklist, source freshness rules, injection evidence requirements, and result rubric without running emulator commands
-- Task 5b: `active/task-05b-run-and-record-emulator-stremio-smoke-validation.md` - queued behind Task 4 local validation and Task 5a; run the emulator smoke validation only after the bridge is ready and explicitly started, then record results, residual risks, and Task 6 handoff notes
+- Task 5b: `active/task-05b-run-and-record-emulator-stremio-smoke-validation.md` - next gated Task 5 slice; run the emulator smoke validation only after Task 4 local validation has passed, Task 5a is complete, and the bridge is explicitly started, then record results, residual risks, and Task 6 handoff notes
 
 ## Completed TaskCards
 
@@ -70,6 +69,7 @@ A blocked TaskCard must include:
 - Task 4c: `completed/task-04c-remote-key-routing-and-editable-safety.md` - completed local validation for document-level key routing, editable passthrough, and optional key separation
 - Task 4d: `completed/task-04d-focus-candidate-navigation.md` - completed local validation for focus candidate filtering, geometry navigation, module-owned UI exclusion, and soft-fail behavior
 - Task 4e: `completed/task-04e-back-exit-dialog-diagnostics-and-source-evidence-prep.md` - completed local validation for Back/Exit/dialog behavior, diagnostics evidence, and explicit source/injection markers
+- Task 5a: `completed/task-05a-prepare-emulator-stremio-smoke-checklist.md` - completed docs-only bridge-readiness checklist and evidence-rule routing for the emulator smoke bridge
 
 ## Blocked TaskCards
 
