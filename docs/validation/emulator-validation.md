@@ -2,12 +2,12 @@
 
 Use Samsung TV emulator checks for local runtime/tooling confidence.
 
-## Task 4.5 bridge
+## Task 5 bridge
 
-- Start this bridge only after a Task 4 runtime slice passes local validation.
+- Start this bridge only after Task 4 runtime local validation passes and Task 5 is explicitly started.
 - Use `docs/validation/emulator-stremio-web-smoke-validation.md` as the smoke checklist and result rubric for `https://web.stremio.com/`.
 - Require source freshness evidence before trusting any emulator observation.
-- Emulator results are local confidence only; Task 5 real Samsung TV validation remains mandatory final acceptance.
+- Emulator results are local confidence only; Task 6 real Samsung TV validation remains mandatory final acceptance.
 
 ## Procedure
 1. Launch `T-samsung-10.0-x86_64` emulator.
