@@ -2,7 +2,7 @@
 
 ## Status
 
-- State: active
+- State: completed
 - Parent ExecPlan: `docs/agent/exec-plans/active/task-04-runtime-core.md`
 - Current owner: Codex
 - Last updated: 2026-05-01
@@ -49,7 +49,7 @@ Task 4 is the runtime-core implementation track. Task 4.5 remains queued until a
 - `tests/syntax.test.js`
 - `docs/runtime/module-boundary.md`
 - `docs/runtime/diagnostics.md`
-- `docs/agent/task-cards/active/task-04b-runtime-contract-and-public-api-hardening.md`
+- `docs/agent/task-cards/completed/task-04b-runtime-contract-and-public-api-hardening.md`
 
 ## Files forbidden
 
@@ -128,7 +128,7 @@ node tests/manifest.test.js
 Docs validation:
 
 ```bash
-git diff --check -- docs/runtime docs/agent/task-cards/active/task-04b-runtime-contract-and-public-api-hardening.md
+git diff --check -- docs/runtime docs/agent/task-cards/completed/task-04b-runtime-contract-and-public-api-hardening.md
 ```
 
 ## Done when
@@ -170,7 +170,7 @@ Return a completion report with:
 - Validation evidence:
   - `npm run check:syntax`
   - `npm test`
-  - `git diff --check -- docs/runtime docs/agent/task-cards/active/task-04b-runtime-contract-and-public-api-hardening.md`
+  - `git diff --check -- docs/runtime docs/agent/task-cards/completed/task-04b-runtime-contract-and-public-api-hardening.md`
 - Acceptance status:
   - Task 4b local hardening slice passed required local validation.
   - Task 4.5 remains queued and was not started.
