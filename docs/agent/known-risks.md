@@ -65,3 +65,9 @@
 - Risk: `CodexTvRuntimeCheck` launches a local packaged start page (`file:///index.html`) by design, while Task 5b requires smoke evidence from `https://web.stremio.com/`.
 - Impact: enabling external navigation alone does not preserve the harness-local runtime evidence contract in the cross-origin target, so Task 5b can be mis-scored from non-equivalent local-harness evidence.
 - Mitigation: treat the disposable harness as a local fixture/debug vehicle only; keep Task 5b blocked until a launch path reaches `https://web.stremio.com/` with verifiable runtime evidence in that target page.
+
+## R-012: TizenBrew standalone can launch without exposing a usable emulator debug target
+- Date: 2026-05-02
+- Risk: after the repository became public and the pinned module started resolving from jsDelivr, `xvvl3S1bvH.TizenBrewStandalone` still launched on `emulator-26101` without exposing a stable forwarded localhost service on `tcp:8081` or a fresh Web Inspector `/json` target for `https://web.stremio.com/`.
+- Impact: Task 5d can prove CDN freshness for the pinned module, but it still cannot prove runtime injection, `window.__STREMIO_TIZENBREW_REMOTE__`, or smoke behavior inside the real Stremio page.
+- Mitigation: treat jsDelivr hosting as unblocked, write `tizenbrewConfig.json` through `/home/owner/share/tmp/sdk_tools/tmp/` plus `shell 0 mv` if direct push fails, ignore stale disposable-harness debug targets, and do not run smoke checks until a fresh `https://web.stremio.com/` debug target appears.

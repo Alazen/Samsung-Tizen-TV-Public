@@ -217,6 +217,65 @@ Record the outcome with:
   - Do not score local `file:///index.html` harness evidence as `https://web.stremio.com/` smoke evidence.
   - Keep Task 6 real Samsung TV plus TizenBrew validation mandatory.
 
+### 2026-05-02 Task 5d first target-equivalent TizenBrew retry
+
+- Date and environment:
+  - 2026-05-02, Codex sandbox on Windows PowerShell, using the installed `xvvl3S1bvH.TizenBrewStandalone` app on `emulator-26101`.
+- Emulator or debug target identifier:
+  - Emulator: `emulator-26101`
+  - Installed TizenBrew app: `xvvl3S1bvH.TizenBrewStandalone`
+  - Installed TizenBrew service: `xvvl3S1bvH.StandaloneService`
+  - No fresh TizenBrew Web Inspector target was discovered in this run.
+  - The only localhost `/json` hit remained the stale disposable-harness target on port `38333` with URL `file:///fixture-history#diagnostics`.
+- Source freshness marker:
+  - Required smoke marker: `stremio-webapp-src-main-js-task4e-v1`
+  - Repo commit: `0c7f8dc59562cb666d0f14672191aa9a2a217d2c`
+  - CDN module metadata URL: `https://cdn.jsdelivr.net/gh/Alazen/Samsung-Tizen-TV@0c7f8dc59562cb666d0f14672191aa9a2a217d2c/package.json`
+  - CDN module source URL: `https://cdn.jsdelivr.net/gh/Alazen/Samsung-Tizen-TV@0c7f8dc59562cb666d0f14672191aa9a2a217d2c/src/main.js`
+  - CDN source SHA-256: `f35c6891b13a6229c154a10173a35bcb14b6a972f206aedf2fd3852e052d807f`
+  - CDN marker results:
+    - `hasSrcMarker=true`
+    - `hasInjectionMarker=true`
+    - `hasInteractiveControl=true`
+    - `hasNamespace=true`
+- Injection marker:
+  - Required injection marker: `stremio-webapp-runtime-injection-v1`
+  - Proven in the CDN-served module source.
+- Served module URL or debug target:
+  - The pinned module identifier `gh/Alazen/Samsung-Tizen-TV@0c7f8dc59562cb666d0f14672191aa9a2a217d2c` is now jsDelivr-reachable.
+  - The emulator-side `tizenbrewConfig.json` was written through the working temp-plus-move path.
+  - A target-equivalent `https://web.stremio.com/` debug page was not captured in this run.
+- Module injection or load evidence:
+  - Not captured in the real Stremio target.
+  - The TizenBrew localhost service forwarded to `tcp:28081` reset HTTP probes instead of serving the expected device-IP response.
+  - No fresh Web Inspector target appeared for TizenBrew or Stremio Web after relaunch or background debug retries.
+- `Info` diagnostics evidence:
+  - Not captured in `https://web.stremio.com/` because the target gate failed first.
+- Optional key registration summary or soft failure:
+  - Not captured in the real Stremio target because no target-equivalent debug page was exposed.
+- Focus, navigation, Back, Exit, and media-key observations:
+  - Not exercised. The smoke checklist stops before behavior checks when the target or injection gates fail.
+- Console error summary:
+  - No target-equivalent console session was available.
+- Command attempted:
+  - `npm run check:syntax`
+  - `npm run check:manifest`
+  - `npm test`
+  - `git rev-parse HEAD`
+  - CDN fetches for pinned `package.json` and `src/main.js`
+  - `E:\tizen-studio\tools\sdb.exe devices`
+  - `E:\tizen-studio\tools\sdb.exe push .agent-tmp\tizenbrewConfig.json /home/owner/share/tmp/sdk_tools/tmp/tizenbrewConfig.json`
+  - `E:\tizen-studio\tools\sdb.exe shell 0 mv /home/owner/share/tmp/sdk_tools/tmp/tizenbrewConfig.json /home/owner/share/tizenbrewConfig.json`
+  - `E:\tizen-studio\tools\sdb.exe forward tcp:28081 tcp:8081`
+  - `E:\tizen-studio\tools\ide\bin\tizen.bat run -p xvvl3S1bvH.TizenBrewStandalone -s emulator-26101`
+  - background `E:\tizen-studio\tools\sdb.exe shell 0 debug xvvl3S1bvH.TizenBrewStandalone`
+- Result category:
+  - `blocked`
+- Residual risks for Task 5:
+  - Public jsDelivr reachability is no longer the blocker.
+  - The remaining blocker is that the emulator-side TizenBrew standalone path does not yet expose a fresh `https://web.stremio.com/` debug target in this shell context.
+  - Task 6 real Samsung TV plus TizenBrew validation remains mandatory.
+
 ## Limitations
 
 - This smoke validation is not final acceptance.

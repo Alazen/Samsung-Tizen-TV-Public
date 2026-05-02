@@ -56,7 +56,7 @@ A blocked TaskCard must include:
 
 ## Active TaskCards
 
-- Task 5c: `active/task-05c-troubleshoot-emulator-launch-target-and-source-freshness.md` - current Task 5 unblocker; root cause is now narrowed to launch-path equivalence (`file:///index.html` harness target versus required `https://web.stremio.com/` smoke target), with Task 5b still blocked pending a target-equivalent path
+- Task 5d: `active/task-05d-run-tizenbrew-emulator-target-equivalent-smoke.md` - current Task 5 execution lane; public jsDelivr freshness is now proven for the pinned module, but the first emulator retry is blocked in-place on TizenBrew standalone service/debug observability
 
 ## Completed TaskCards
 
@@ -70,6 +70,7 @@ A blocked TaskCard must include:
 - Task 4d: `completed/task-04d-focus-candidate-navigation.md` - completed local validation for focus candidate filtering, geometry navigation, module-owned UI exclusion, and soft-fail behavior
 - Task 4e: `completed/task-04e-back-exit-dialog-diagnostics-and-source-evidence-prep.md` - completed local validation for Back/Exit/dialog behavior, diagnostics evidence, and explicit source/injection markers
 - Task 5a: `completed/task-05a-prepare-emulator-stremio-smoke-checklist.md` - completed docs-only bridge-readiness checklist and evidence-rule routing for the emulator smoke bridge
+- Task 5c: `active/task-05c-troubleshoot-emulator-launch-target-and-source-freshness.md` - completed troubleshooting handoff; the disposable harness is not target-equivalent and future bridge work belongs to the TizenBrew module path
 - task-agent-01: `completed/task-agent-01-taskbatch-execution-harness.md` - completed historical record for the docs-only TaskBatch harness and repo-local execution skill
 
 ## Blocked TaskCards

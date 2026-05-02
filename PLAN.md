@@ -4,7 +4,7 @@
 
 Task 3, Emulator Debug Harness Decision, is closed as blocked under Decision B.
 Task 4 is active with Task 4a, Task 4b, Task 4c, Task 4d, and Task 4e completed. The final runtime slice closed out Back, Exit, dialog behavior, diagnostics, and source-evidence prep.
-Task 5 is the active emulator smoke-validation bridge against `https://web.stremio.com/`. Task 5a bridge readiness checklist and evidence-rules review is complete as a docs-only slice. Task 5b remains blocked after the 2026-05-02 retries: the emulator relaunch and debug attach succeeded, but the live target remained `file:///index.html` instead of `https://web.stremio.com/`. Task 5c troubleshooting confirmed repo runtime parity (the harness module now hash-matches `src/main.js`) and identified the remaining blocker as launch-path equivalence: a harness-only redirect/hosted-start change does not preserve equivalent injected runtime evidence in the cross-origin smoke target. Task 5 never replaces real Samsung TV acceptance.
+Task 5 is the active emulator smoke-validation bridge against `https://web.stremio.com/`. Task 5a bridge readiness checklist and evidence-rules review is complete as a docs-only slice. Task 5b remains blocked after the 2026-05-02 retries: the emulator relaunch and debug attach succeeded, but the live target remained `file:///index.html` instead of `https://web.stremio.com/`. Task 5c troubleshooting confirmed repo runtime parity (the harness module now hash-matches `src/main.js`) and identified the remaining blocker as launch-path equivalence: a harness-only redirect/hosted-start change does not preserve equivalent injected runtime evidence in the cross-origin smoke target. The public GitHub repository now clears the jsDelivr hosting blocker for the pinned TizenBrew module path, but the first Task 5d target-equivalent retry is still blocked because the emulator-side TizenBrew standalone app did not expose a reachable localhost service or a fresh Web Inspector target for `https://web.stremio.com/`. Task 5 never replaces real Samsung TV acceptance.
 Task 6 is the real Samsung TV plus TizenBrew validation gate and final acceptance path.
 
 Active plan:
@@ -27,7 +27,8 @@ Task 4 status:
 Task 5 status:
 - Task 5a: `docs/agent/task-cards/completed/task-05a-prepare-emulator-stremio-smoke-checklist.md` - completed docs-only bridge-readiness checklist, source freshness rules, injection evidence rules, and result rubric routing
 - Task 5b: `docs/agent/task-cards/blocked/task-05b-run-and-record-emulator-stremio-smoke-validation.md` - blocked after the emulator relaunched and exposed debug port `38333`, because the live debug target was still `file:///index.html` and served stale `js/stremio-remote.js`
-- Task 5c: `docs/agent/task-cards/active/task-05c-troubleshoot-emulator-launch-target-and-source-freshness.md` - active troubleshooting slice documenting the launch-path equivalence blocker; Task 5b remains blocked pending a target-equivalent smoke path
+- Task 5c: `docs/agent/task-cards/active/task-05c-troubleshoot-emulator-launch-target-and-source-freshness.md` - completed troubleshooting slice documenting that the disposable harness is not target-equivalent and that the correct bridge path is TizenBrew site-modification injection
+- Task 5d: `docs/agent/task-cards/active/task-05d-run-tizenbrew-emulator-target-equivalent-smoke.md` - active target-equivalent TizenBrew smoke slice; jsDelivr reachability is now proven for the pinned commit, but the first emulator retry is blocked on TizenBrew standalone service/debug observability
 
 TaskCard index:
 - `docs/agent/task-cards/index.md`

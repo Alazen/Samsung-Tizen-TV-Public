@@ -8,6 +8,8 @@ Use Samsung TV emulator checks for local runtime/tooling confidence.
 - Run `npm run check:syntax` before launching the emulator; it now rejects stale repo-tracked harness runtime copies that drift from the canonical freshness markers or interactive-control guard.
 - Use `docs/validation/emulator-stremio-web-smoke-validation.md` as the smoke checklist and result rubric for `https://web.stremio.com/`.
 - Require source freshness evidence before trusting any emulator observation.
+- For the standalone TizenBrew app, if direct `sdb push` to `/home/owner/share/tizenbrewConfig.json` fails, use the working two-step device write path: push to `/home/owner/share/tmp/sdk_tools/tmp/tizenbrewConfig.json`, then move it into place with `sdb shell 0 mv`.
+- Ignore stale Web Inspector targets left behind by the disposable harness; only a fresh `https://web.stremio.com/` target counts for Task 5 evidence.
 - Emulator results are local confidence only; Task 6 real Samsung TV validation remains mandatory final acceptance.
 
 ## Procedure
@@ -163,3 +165,24 @@ Emulator outcomes do not replace real-device acceptance for TizenBrew injection 
 - Result:
   - no fresh debug port or live target inspection was produced in this shell context
   - the Task 5c launch-path equivalence blocker remains, and the sandbox-identity timeout remains an additional execution blocker for live source verification here
+
+## Observed 2026-05-02 Task 5d first target-equivalent TizenBrew retry
+
+- Repo/CDN preflight:
+  - `git rev-parse HEAD` returned `0c7f8dc59562cb666d0f14672191aa9a2a217d2c`.
+  - `npm run check:syntax`, `npm run check:manifest`, and `npm test` all passed before emulator work resumed.
+  - `https://cdn.jsdelivr.net/gh/Alazen/Samsung-Tizen-TV@0c7f8dc59562cb666d0f14672191aa9a2a217d2c/package.json` returned `200`.
+  - `https://cdn.jsdelivr.net/gh/Alazen/Samsung-Tizen-TV@0c7f8dc59562cb666d0f14672191aa9a2a217d2c/src/main.js` returned `200` with SHA-256 `f35c6891b13a6229c154a10173a35bcb14b6a972f206aedf2fd3852e052d807f`.
+  - The CDN-served `src/main.js` contained `stremio-webapp-src-main-js-task4e-v1`, `stremio-webapp-runtime-injection-v1`, `isInteractiveControl`, and `__STREMIO_TIZENBREW_REMOTE__`.
+- Emulator/config path:
+  - `E:\tizen-studio\tools\sdb.exe devices` listed `emulator-26101 device T-samsung-10.0-x86_64`.
+  - Direct `sdb push` to `/home/owner/share/tizenbrewConfig.json` was already known to fail, so the config was pushed to `/home/owner/share/tmp/sdk_tools/tmp/tizenbrewConfig.json` and moved into place with `sdb shell 0 mv`.
+  - `E:\tizen-studio\tools\ide\bin\tizen.bat run -p xvvl3S1bvH.TizenBrewStandalone -s emulator-26101` launched successfully with `debug 0`.
+- Observability result:
+  - Forwarded `tcp:28081 -> tcp:8081` did not yield a stable TizenBrew localhost service; HTTP probes to `http://127.0.0.1:28081/` were reset by the remote host.
+  - Repeated scans for localhost `/json` endpoints found only the stale disposable-harness target on port `38333` (`file:///fixture-history#diagnostics`), not a fresh TizenBrew or `https://web.stremio.com/` target.
+  - Background `sdb shell 0 debug xvvl3S1bvH.TizenBrewStandalone` retries still did not expose a new local Web Inspector endpoint in this shell context.
+- Result:
+  - Task 5d result category is currently `blocked`.
+  - The jsDelivr hosting blocker is cleared.
+  - The remaining blocker is emulator-side TizenBrew standalone service/debug observability, not module freshness or repo hosting.

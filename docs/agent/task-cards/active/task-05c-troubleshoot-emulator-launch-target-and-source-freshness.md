@@ -2,7 +2,7 @@
 
 ## Status
 
-- State: active
+- State: completed
 - Parent ExecPlan: `docs/agent/exec-plans/active/task-05-emulator-stremio-web-smoke-validation.md`
 - Current owner: Codex
 - Last updated: 2026-05-02
@@ -139,6 +139,14 @@ Then inspect the live debug target and record:
 - If Task 5b is unblocked, it is moved back to `docs/agent/task-cards/active/` or a clear next TaskCard is created for the resumed smoke run.
 - Residual risks are updated.
 - Task 6 real Samsung TV validation remains mandatory.
+
+## Outcome
+
+- The disposable `CodexTvRuntimeCheck` harness is confirmed to be a local fixture/debug vehicle only and not a valid Task 5b smoke target.
+- The correct Task 5 bridge model is now documented as the real TizenBrew site-modification module path targeting `https://web.stremio.com/`.
+- The public GitHub/jsDelivr hosting gate for the pinned commit is now cleared, so future bridge work should not retry the old 404 assumption.
+- The next blocker is no longer repo hosting or harness freshness. It is the emulator-side TizenBrew standalone service/debug path, which did not expose a fresh Stremio Web debug target in the first Task 5d retry.
+- Next action: execute `docs/agent/task-cards/active/task-05d-run-tizenbrew-emulator-target-equivalent-smoke.md` and keep Task 5b blocked until that path yields target-equivalent runtime evidence.
 
 ## Stop conditions
 
