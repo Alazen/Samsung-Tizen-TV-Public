@@ -12,7 +12,7 @@ Validate the Task 4 runtime bridge against `https://web.stremio.com/` on the Sam
 ## Context
 Task 5 is a bridge only. It starts after Task 4 local validation has passed and the team explicitly starts the emulator bridge. Emulator observations provide local confidence only and never replace real Samsung TV acceptance. The bridge must preserve the stale-launch, signing/decryption, sandbox timeout, and real-TV limitations documented in the repo.
 
-Task 5b was started on 2026-05-02 and remains blocked. The emulator/device visibility issue was cleared, but the current debug path still lands on the local harness page instead of `https://web.stremio.com/`, and the live served `js/stremio-remote.js` still does not match the repo-tracked freshness evidence.
+Task 5b remains blocked after the 2026-05-02 retry against commit `7fdd3acef4a385da4396a776c45cc558a6cd2fec`. The emulator/device visibility issue was cleared, but the current debug path still lands on `file:///index.html` instead of `https://web.stremio.com/`, and the live served `js/stremio-remote.js` still does not match the repo-tracked freshness evidence.
 
 ## Slices
 1. Task 5a (completed): prepared the smoke checklist, source freshness rules, module injection/load evidence requirements, and pass/partial/blocked result rubric.

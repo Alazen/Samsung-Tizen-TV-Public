@@ -100,7 +100,7 @@ $env:Path = "E:\tizen-studio\tools;$env:Path"
   - A manual `console.log('Codex TV debug path works')` appeared in DevTools and confirmed the debug bridge.
   - The browser warning about pasting into DevTools is expected and does not block the workflow.
 - On 2026-04-30, outside the sandbox, `E:\tizen-studio\tools\emulator\bin\em-cli.bat list-vm` returned `T-samsung-10.0-x86_64`.
-- On 2026-04-30, outside the sandbox, `E:\tizen-studio\tools\emulator\bin\em-cli.bat launch -n T-samsung-10.0-x86_64` launched the emulator successfully. About 5 seconds later, `E:\tizen-studio\tools\sdb.exe devices` listed `emulator-26101 device T-samsung-10.0-x86_64`.
+- On 2026-04-30, outside the sandbox, `E:\tizen-studio\tools\emulator\bin\em-cli.bat launch -n T-samsung-10.0-x86_64` launched the emulator successfully. Wait 15 seconds after launch for boot to finish, then run `E:\tizen-studio\tools\sdb.exe devices`; that sequence listed `emulator-26101 device T-samsung-10.0-x86_64`.
 - A newer Tizen CLI is also installed at `E:\tizen-studio\tools\tizen-core\tz.exe` even though it is not currently on PATH in the Codex shell.
 - `E:\tizen-studio\tools\tizen-core\tz.exe emul list-vm` returned `T-samsung-10.0-x86_64`.
 - `E:\tizen-studio\tools\tizen-core\tz.exe run --help` advertises `-d, --debug-mode` with the description `Run web app in debug mode in Web Inspector`.

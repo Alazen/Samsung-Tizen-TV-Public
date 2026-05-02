@@ -4,7 +4,7 @@
 
 Task 3, Emulator Debug Harness Decision, is closed as blocked under Decision B.
 Task 4 is active with Task 4a, Task 4b, Task 4c, Task 4d, and Task 4e completed. The final runtime slice closed out Back, Exit, dialog behavior, diagnostics, and source-evidence prep.
-Task 5 is the emulator smoke-validation bridge against `https://web.stremio.com/`; merged Task 5a bridge readiness checklist and evidence-rules review is complete as a docs-only slice. Task 5b started on 2026-05-02 and remains blocked after retry: the emulator now launches and debugs, but the current debug path reaches the local harness page instead of `https://web.stremio.com/`, and live source freshness is still unproven. It never replaces real Samsung TV acceptance.
+Task 5 is the emulator smoke-validation bridge against `https://web.stremio.com/`; merged Task 5a bridge readiness checklist and evidence-rules review is complete as a docs-only slice. Task 5b remains blocked after the 2026-05-02 retry against commit `7fdd3acef4a385da4396a776c45cc558a6cd2fec`: the emulator relaunch and debug attach succeeded, but the current debug path still reaches `file:///index.html` instead of `https://web.stremio.com/`, and live served source freshness is still unproven. It never replaces real Samsung TV acceptance.
 Task 6 is the real Samsung TV plus TizenBrew validation gate and final acceptance path.
 
 Active plan:
