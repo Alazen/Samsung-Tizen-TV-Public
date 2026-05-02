@@ -56,7 +56,7 @@ A blocked TaskCard must include:
 
 ## Active TaskCards
 
-- Task 5b: `active/task-05b-run-and-record-emulator-stremio-smoke-validation.md` - next gated Task 5 slice; run the emulator smoke validation only after Task 4 local validation has passed, Task 5a is complete, and the bridge is explicitly started, then record results, residual risks, and Task 6 handoff notes
+- Task 5c: `active/task-05c-troubleshoot-emulator-launch-target-and-source-freshness.md` - current Task 5 unblocker; troubleshoot why the emulator debug target launches `file:///index.html` and serves stale `js/stremio-remote.js` instead of proving fresh runtime code on `https://web.stremio.com/`
 
 ## Completed TaskCards
 
@@ -74,6 +74,7 @@ A blocked TaskCard must include:
 ## Blocked TaskCards
 
 - Task 3B: `blocked/task-03b-validate-debug-command-path.md`
+- Task 5b: `blocked/task-05b-run-and-record-emulator-stremio-smoke-validation.md` - blocked because the latest emulator relaunch reached debug port `38333`, but the live target remained `file:///index.html` and served stale `js/stremio-remote.js` without the required source marker, injection marker, or interactive-control guard
 
 ## Promotion rules
 
