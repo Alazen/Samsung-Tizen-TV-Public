@@ -18,6 +18,7 @@
 ## Skills
 - `.agents/skills/tizen-doc-lookup/SKILL.md`: official-doc lookup workflow for Tizen TV tasks.
 - `.agents/skills/stremio-task-executor/SKILL.md`: bounded TaskCard execution loop for this repository.
+- `.agents/skills/techlead/SKILL.md`: repository-level planning, orchestration, TaskBatch checks, and ExecPlan maintenance.
 
 ## Edit boundaries (default)
 - Allowed only when a task explicitly includes the path.
