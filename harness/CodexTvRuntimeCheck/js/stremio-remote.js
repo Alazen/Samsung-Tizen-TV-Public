@@ -2,6 +2,8 @@
   "use strict";
 
   var NAMESPACE = "__STREMIO_TIZENBREW_REMOTE__";
+  var RUNTIME_SOURCE_MARKER = "stremio-webapp-src-main-js-task4e-v1";
+  var RUNTIME_INJECTION_MARKER = "stremio-webapp-runtime-injection-v1";
   if (globalScope[NAMESPACE] && globalScope[NAMESPACE].initialized) {
     return;
   }
@@ -267,12 +269,50 @@
     };
   }
 
+  function collectRuntimeMarkers() {
+    var documentObject = getDocument();
+    var namespaceObject = globalScope && globalScope[NAMESPACE];
+    var styleMarkerPresent = false;
+
+    if (documentObject && typeof documentObject.querySelector === "function") {
+      styleMarkerPresent = Boolean(
+        documentObject.querySelector("style[data-stremio-remote-style='1']")
+      );
+    }
+
+    return {
+      namespacePresent: Boolean(namespaceObject),
+      initializedNamespace: Boolean(namespaceObject && namespaceObject.initialized),
+      styleMarkerPresent: styleMarkerPresent,
+      diagnosticsPanelMarkerPresent: Boolean(findDiagnosticsPanel()),
+      exitModalMarkerPresent: Boolean(findExitModal()),
+      styleMarkerInjected: state.styleInjected,
+      diagnosticsPanelCreated: state.diagnosticsPanelCreated,
+      exitModalCreated: state.exitModalCreated
+    };
+  }
+
   function getState() {
+    var runtimeMarkers;
+
     refreshApiAvailability();
+    runtimeMarkers = collectRuntimeMarkers();
 
     return {
       initialized: state.initialized,
       initTime: state.initTime,
+      sourceMarker: RUNTIME_SOURCE_MARKER,
+      injectionMarker: RUNTIME_INJECTION_MARKER,
+      runtimeMarkers: {
+        namespacePresent: runtimeMarkers.namespacePresent,
+        initializedNamespace: runtimeMarkers.initializedNamespace,
+        styleMarkerPresent: runtimeMarkers.styleMarkerPresent,
+        diagnosticsPanelMarkerPresent: runtimeMarkers.diagnosticsPanelMarkerPresent,
+        exitModalMarkerPresent: runtimeMarkers.exitModalMarkerPresent,
+        styleMarkerInjected: runtimeMarkers.styleMarkerInjected,
+        diagnosticsPanelCreated: runtimeMarkers.diagnosticsPanelCreated,
+        exitModalCreated: runtimeMarkers.exitModalCreated
+      },
       registeredKeys: state.registeredKeys.slice(),
       failedKeys: copyFailedKeys(state.failedKeys),
       apiAvailability: {
@@ -602,8 +642,12 @@
 
   function buildDiagnosticsText() {
     var snapshot = getState();
+    var runtimeMarkers = snapshot.runtimeMarkers;
     var lastKey = snapshot.lastKey
       ? snapshot.lastKey.key + (snapshot.lastKey.code ? " (" + snapshot.lastKey.code + ")" : "")
+      : "(none)";
+    var lastExitAttempt = snapshot.lastExitAttempt !== null
+      ? String(snapshot.lastExitAttempt)
       : "(none)";
     var exitResult = snapshot.lastExitResult
       ? (snapshot.lastExitResult.ok ? "ok: " : "failed: ") + snapshot.lastExitResult.message
@@ -611,15 +655,29 @@
 
     return [
       "Stremio Web TV Remote Diagnostics",
+      "Source marker: " + snapshot.sourceMarker,
+      "Injection marker: " + snapshot.injectionMarker,
+      "Injection evidence: " +
+        "namespace=" + String(runtimeMarkers.namespacePresent) +
+        ", initialized=" + String(runtimeMarkers.initializedNamespace) +
+        ", style-marker=" + String(runtimeMarkers.styleMarkerPresent) +
+        ", diagnostics-marker=" + String(runtimeMarkers.diagnosticsPanelMarkerPresent) +
+        ", exit-marker=" + String(runtimeMarkers.exitModalMarkerPresent),
       "Init time: " + (snapshot.initTime !== null ? String(snapshot.initTime) : "(not initialized)"),
       "Path: " + (getLocationPath() || "(unavailable)"),
       "Last key: " + lastKey,
       "Last action: " + (snapshot.lastConsumedAction || "(none)"),
+      "Diagnostics open: " + String(snapshot.diagnosticsOpen),
       "Exit modal open: " + String(snapshot.exitModalOpen),
       "Current focus role: " + (snapshot.currentFocusRole || "(none)"),
       "Candidate count: " + String(snapshot.candidateCount),
       "Last Back resolution: " + (snapshot.lastBackResolution || "(none)"),
+      "Last exit attempt: " + lastExitAttempt,
       "Last exit result: " + exitResult,
+      "Optional key registration: " +
+        "registered=" + String(snapshot.registeredKeys.length) +
+        ", failed=" + String(snapshot.failedKeys.length) +
+        ", apiAvailable=" + String(snapshot.apiAvailability.tvInputDevice),
       "Registered keys: " + formatKeyList(snapshot.registeredKeys),
       "Failed keys: " + formatFailedKeys(snapshot.failedKeys),
       "APIs: " +
@@ -1351,15 +1409,33 @@
     return bestCandidate;
   }
 
-  function pickDomOrderFallback(candidates, currentCandidate, direction) {
-    var step = (direction === "ArrowRight" || direction === "ArrowDown") ? 1 : -1;
-    var nextIndex = currentCandidate.order + step;
+  function pickSeedCandidate(candidates, direction) {
+    var bestCandidate = null;
+    var bestScore = Infinity;
+    var i;
+    var candidate;
+    var score;
 
-    if (nextIndex < 0 || nextIndex >= candidates.length) {
-      return null;
+    for (i = 0; i < candidates.length; i += 1) {
+      candidate = candidates[i];
+
+      if (direction === "ArrowLeft") {
+        score = (-candidate.rect.right * 10000) + (candidate.rect.top * 100) + candidate.order;
+      } else if (direction === "ArrowUp") {
+        score = (-candidate.rect.bottom * 10000) + (candidate.rect.left * 100) + candidate.order;
+      } else if (direction === "ArrowDown") {
+        score = (candidate.rect.top * 10000) + (candidate.rect.left * 100) + candidate.order;
+      } else {
+        score = (candidate.rect.left * 10000) + (candidate.rect.top * 100) + candidate.order;
+      }
+
+      if (score < bestScore) {
+        bestScore = score;
+        bestCandidate = candidate;
+      }
     }
 
-    return candidates[nextIndex];
+    return bestCandidate;
   }
 
   function moveFocus(direction) {
@@ -1375,16 +1451,13 @@
 
     currentCandidate = findCandidateByElement(candidates, currentFocusedElement);
     if (!currentCandidate) {
-      applyFocus(candidates[0]);
-      state.lastConsumedAction = "focus:seed:" + candidates[0].role;
+      nextCandidate = pickSeedCandidate(candidates, direction);
+      applyFocus(nextCandidate);
+      state.lastConsumedAction = "focus:seed:" + nextCandidate.role;
       return true;
     }
 
     nextCandidate = pickDirectionalCandidate(candidates, currentCandidate, direction);
-    if (!nextCandidate) {
-      nextCandidate = pickDomOrderFallback(candidates, currentCandidate, direction);
-    }
-
     if (!nextCandidate) {
       return false;
     }
@@ -1585,7 +1658,12 @@
   }
 
   function handleKeydown(event) {
+    var editableContext = isEditableContext(event);
+
     state.lastKey = normalizeKeyEvent(event);
+    if (editableContext) {
+      state.lastKey.editable = true;
+    }
     state.lastConsumedAction = null;
 
     if (isDiagnosticsToggleKey(state.lastKey.key)) {
@@ -1613,7 +1691,7 @@
       return;
     }
 
-    if (isEditableContext(event)) {
+    if (editableContext) {
       renderDiagnostics();
       return;
     }

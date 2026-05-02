@@ -5,6 +5,7 @@ This smoke validation bridges Task 4 runtime slices to Task 6 real-TV acceptance
 ## Preconditions
 
 - Task 4 local validation has passed.
+- `npm run check:syntax` has passed, proving the repo-tracked harness copy still carries the canonical freshness markers and interactive-control guard before emulator launch.
 - Source freshness evidence is captured before trusting any emulator observation.
 - Module injection or load evidence is captured before interpreting key, focus, Back, Exit, or diagnostics behavior.
 - Emulator results are local confidence only and do not replace real Samsung TV validation.
@@ -198,6 +199,23 @@ Record the outcome with:
   - The current debug path still stops at `file:///index.html` rather than `https://web.stremio.com/`.
   - The live served module freshness remains unproven against the documented marker contract.
   - Task 6 real Samsung TV plus TizenBrew validation remains mandatory.
+
+### 2026-05-02 Task 5c launch-path troubleshooting conclusion
+
+- Date and environment:
+  - 2026-05-02, repo/source troubleshooting slice (no new smoke run).
+- Evidence captured:
+  - `src/main.js` and `harness/CodexTvRuntimeCheck/js/stremio-remote.js` now hash-match at SHA-256 `f35c6891b13a6229c154a10173a35bcb14b6a972f206aedf2fd3852e052d807f`.
+  - `harness/CodexTvRuntimeCheck/config.xml` still defines `<content src="index.html"/>`, so `tz run -d` remains rooted to the local harness page unless a hosted-start/navigation policy is introduced.
+  - Official Tizen docs indicate external navigation is policy-gated (`<access>` or `<tizen:allow-navigation>`) and that Tizen Device APIs are not available in cross-origin pages.
+- Launch-path conclusion:
+  - A harness-only redirect/hosted-start change can potentially reach `https://web.stremio.com/`, but it does not preserve equivalent harness-local runtime evidence in that cross-origin target page.
+  - Therefore, this path is not a safe Task 5b unblocker by itself.
+- Result category:
+  - `blocked`
+- Residual risks for Task 5:
+  - Do not score local `file:///index.html` harness evidence as `https://web.stremio.com/` smoke evidence.
+  - Keep Task 6 real Samsung TV plus TizenBrew validation mandatory.
 
 ## Limitations
 

@@ -52,10 +52,16 @@
 - Date: 2026-05-02
 - Risk: `harness/CodexTvRuntimeCheck/js/stremio-remote.js` can serve stale code that lacks the canonical `src/main.js` source marker, injection marker, or interactive-control guard.
 - Impact: emulator observations can fail the freshness contract even when `src/main.js` is correct.
-- Mitigation: Task 5c should add or update a lightweight guard so stale harness runtime copies fail before emulator launch, and Task 5b must continue checking served source freshness in the live debug target.
+- Mitigation: `npm run check:syntax` now acts as the repo-local preflight guard for canonical marker and interactive-control parity; Task 5b must still check served source freshness in the live debug target before trusting emulator evidence.
 
 ## R-010: Harness freshness contract can drift from the smoke-check marker contract
 - Date: 2026-05-02
 - Risk: the Task 5 smoke checklist requires the Task 4e marker strings, but the disposable harness runtime and the canonical runtime source can drift in which marker, hash, or guard is actually present.
 - Impact: emulator smoke evidence can be blocked before page testing because the live harness/module source cannot be proven fresh against the documented contract.
-- Mitigation: before rerunning Task 5b, align the loaded module freshness proof with the current repo-tracked source marker, commit SHA, or source hash, then verify the live served module content through Web Inspector/CDP.
+- Mitigation: before rerunning Task 5b, confirm the repo-tracked harness copy passes the marker parity check, then verify the live served module content through Web Inspector/CDP and treat any mismatch as blocked validation.
+
+## R-011: Harness launch-path cannot satisfy Task 5b target equivalence
+- Date: 2026-05-02
+- Risk: `CodexTvRuntimeCheck` launches a local packaged start page (`file:///index.html`) by design, while Task 5b requires smoke evidence from `https://web.stremio.com/`.
+- Impact: enabling external navigation alone does not preserve the harness-local runtime evidence contract in the cross-origin target, so Task 5b can be mis-scored from non-equivalent local-harness evidence.
+- Mitigation: treat the disposable harness as a local fixture/debug vehicle only; keep Task 5b blocked until a launch path reaches `https://web.stremio.com/` with verifiable runtime evidence in that target page.

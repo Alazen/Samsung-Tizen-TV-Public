@@ -56,7 +56,7 @@ A blocked TaskCard must include:
 
 ## Active TaskCards
 
-- Task 5c: `active/task-05c-troubleshoot-emulator-launch-target-and-source-freshness.md` - current Task 5 unblocker; troubleshoot why the emulator debug target launches `file:///index.html` and serves stale `js/stremio-remote.js` instead of proving fresh runtime code on `https://web.stremio.com/`
+- Task 5c: `active/task-05c-troubleshoot-emulator-launch-target-and-source-freshness.md` - current Task 5 unblocker; root cause is now narrowed to launch-path equivalence (`file:///index.html` harness target versus required `https://web.stremio.com/` smoke target), with Task 5b still blocked pending a target-equivalent path
 
 ## Completed TaskCards
 

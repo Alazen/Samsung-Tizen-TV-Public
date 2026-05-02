@@ -9,6 +9,9 @@ const mainScriptPath = path.join(rootDir, "src", "main.js");
 const stylesPath = path.join(rootDir, "src", "styles.css");
 const harnessRemoteScriptPath = path.join(rootDir, "harness", "CodexTvRuntimeCheck", "js", "stremio-remote.js");
 const NAMESPACE = "__STREMIO_TIZENBREW_REMOTE__";
+const RUNTIME_SOURCE_MARKER = "stremio-webapp-src-main-js-task4e-v1";
+const RUNTIME_INJECTION_MARKER = "stremio-webapp-runtime-injection-v1";
+const INTERACTIVE_CONTROL_GUARD = "isInteractiveControl";
 
 function toDataKey(attributeName) {
   return attributeName.replace(/^data-/, "").replace(/-([a-z])/g, (_match, letter) => letter.toUpperCase());
@@ -477,6 +480,68 @@ test("harness visibility and dialog heuristics stay in sync with src/main.js", (
   assert.notEqual(sourceDialogFunction, null);
   assert.notEqual(harnessDialogFunction, null);
   assert.equal(harnessDialogFunction, sourceDialogFunction);
+});
+
+test("harness freshness markers and interactive candidate gating stay in sync with src/main.js", () => {
+  const sourceMainCode = fs.readFileSync(mainScriptPath, "utf8");
+  const harnessCode = fs.readFileSync(harnessRemoteScriptPath, "utf8");
+  const sourceGenericCandidateFunction = extractFunctionSource(sourceMainCode, "isGenericCandidateElement");
+  const harnessGenericCandidateFunction = extractFunctionSource(harnessCode, "isGenericCandidateElement");
+
+  assert.match(sourceMainCode, /var RUNTIME_SOURCE_MARKER = "stremio-webapp-src-main-js-task4e-v1";/);
+  assert.match(sourceMainCode, /var RUNTIME_INJECTION_MARKER = "stremio-webapp-runtime-injection-v1";/);
+  assert.match(harnessCode, /var RUNTIME_SOURCE_MARKER = "stremio-webapp-src-main-js-task4e-v1";/);
+  assert.match(harnessCode, /var RUNTIME_INJECTION_MARKER = "stremio-webapp-runtime-injection-v1";/);
+
+  assert.notEqual(sourceGenericCandidateFunction, null);
+  assert.notEqual(harnessGenericCandidateFunction, null);
+  assert.equal(harnessGenericCandidateFunction, sourceGenericCandidateFunction);
+
+  assert.match(harnessCode, /"Source marker: " \+ snapshot\.sourceMarker/);
+  assert.match(harnessCode, /"Injection marker: " \+ snapshot\.injectionMarker/);
+  assert.match(harnessCode, /"Injection evidence: " \+/);
+});
+
+test("harness runtime copy stays aligned with src/main.js freshness markers", () => {
+  const sourceMainCode = fs.readFileSync(mainScriptPath, "utf8");
+  const harnessCode = fs.readFileSync(harnessRemoteScriptPath, "utf8");
+
+  assert.match(
+    sourceMainCode,
+    new RegExp(RUNTIME_SOURCE_MARKER),
+    `src/main.js must keep source marker ${RUNTIME_SOURCE_MARKER}`
+  );
+  assert.match(
+    sourceMainCode,
+    new RegExp(RUNTIME_INJECTION_MARKER),
+    `src/main.js must keep injection marker ${RUNTIME_INJECTION_MARKER}`
+  );
+  assert.match(
+    sourceMainCode,
+    new RegExp(INTERACTIVE_CONTROL_GUARD),
+    `src/main.js must keep ${INTERACTIVE_CONTROL_GUARD} in the runtime focus/back logic`
+  );
+
+  assert.match(
+    harnessCode,
+    new RegExp(RUNTIME_SOURCE_MARKER),
+    "Harness runtime copy is stale: refresh harness/CodexTvRuntimeCheck/js/stremio-remote.js from src/main.js before emulator launch."
+  );
+  assert.match(
+    harnessCode,
+    new RegExp(RUNTIME_INJECTION_MARKER),
+    "Harness runtime copy is stale: refresh harness/CodexTvRuntimeCheck/js/stremio-remote.js from src/main.js before emulator launch."
+  );
+  assert.match(
+    harnessCode,
+    new RegExp(INTERACTIVE_CONTROL_GUARD),
+    "Harness runtime copy is stale: refresh harness/CodexTvRuntimeCheck/js/stremio-remote.js from src/main.js before emulator launch."
+  );
+  assert.equal(
+    harnessCode,
+    sourceMainCode,
+    "Harness runtime copy drifted from src/main.js. Refresh harness/CodexTvRuntimeCheck/js/stremio-remote.js from src/main.js before emulator launch."
+  );
 });
 
 test("src/main.js bootstraps with runtime state, diagnostics, and TV input helpers", () => {

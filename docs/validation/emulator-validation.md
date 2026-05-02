@@ -5,6 +5,7 @@ Use Samsung TV emulator checks for local runtime/tooling confidence.
 ## Task 5 bridge
 
 - Start this bridge only after Task 4 runtime local validation passes and Task 5 is explicitly started.
+- Run `npm run check:syntax` before launching the emulator; it now rejects stale repo-tracked harness runtime copies that drift from the canonical freshness markers or interactive-control guard.
 - Use `docs/validation/emulator-stremio-web-smoke-validation.md` as the smoke checklist and result rubric for `https://web.stremio.com/`.
 - Require source freshness evidence before trusting any emulator observation.
 - Emulator results are local confidence only; Task 6 real Samsung TV validation remains mandatory final acceptance.
@@ -134,3 +135,31 @@ Use Samsung TV emulator checks for local runtime/tooling confidence.
 
 ## Limitations
 Emulator outcomes do not replace real-device acceptance for TizenBrew injection and physical remote behavior.
+
+## Observed 2026-05-02 Task 5c launch-path troubleshooting conclusion
+
+- Repo source parity check:
+  - `src/main.js` and `harness/CodexTvRuntimeCheck/js/stremio-remote.js` both resolved to SHA-256 `f35c6891b13a6229c154a10173a35bcb14b6a972f206aedf2fd3852e052d807f`.
+  - Task 4e source marker, injection marker, and interactive-control guard were present in both repo-tracked files.
+- Launch-path root cause:
+  - `harness/CodexTvRuntimeCheck/config.xml` still declares `<content src="index.html"/>`, so the debug launch target is the local packaged harness page.
+  - Official Tizen docs allow external start/navigation (`<tizen:content/>`, `<tizen:allow-navigation>`, and policy entries), but they do not make a local packaged runtime equivalent to injected runtime evidence inside a cross-origin page.
+  - Official Tizen Web Runtime guidance states Tizen Device APIs are unavailable in cross-origin pages, so moving the harness to `https://web.stremio.com/` does not preserve the same runtime evidence contract used by local harness checks.
+- Result:
+  - Task 5b stays `blocked`.
+  - Task 5c found no safe harness-only launch-path change that both reaches `https://web.stremio.com/` and preserves equivalent injected runtime evidence in that target page.
+
+## Observed 2026-05-02 Task 5c post-guard emulator retry
+
+- Preflight:
+  - `npm run check:syntax` passed after the harness runtime copy was refreshed from `src/main.js`.
+  - `E:\tizen-studio\tools\sdb.exe devices` listed `emulator-26101 device T-samsung-10.0-x86_64`.
+- Debug launch path:
+  - command (attempt 1): `E:\tizen-studio\tools\tizen-core\tz.exe run -d -e emulator-26101 -w C:\Users\gabip\GitHub\Stremio-WebApp\harness\CodexTvRuntimeCheck`
+  - output (attempt 1): `tz: error: command terminated after timeout`
+  - command (attempt 2): same command, same context
+  - output (attempt 2): `tz: error: command terminated after timeout`
+  - stop condition applied: same emulator command failed twice for the same reason after local guards passed
+- Result:
+  - no fresh debug port or live target inspection was produced in this shell context
+  - the Task 5c launch-path equivalence blocker remains, and the sandbox-identity timeout remains an additional execution blocker for live source verification here
