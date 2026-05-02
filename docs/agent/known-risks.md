@@ -41,3 +41,15 @@
 - Risk: a Task 5 `web.stremio.com` emulator smoke pass can confirm local wiring, diagnostics, and navigation behavior, but it cannot prove final user acceptance on a real Samsung TV.
 - Impact: Task 5 could be mistaken for sign-off even though focus, back, media-key, or input behavior may differ on the real device.
 - Mitigation: require source freshness evidence before trusting live emulator observations, record pass/partial/blocked outcomes only, and keep Task 6 real-TV validation mandatory.
+
+## R-008: Harness module can lag source marker expectations
+- Date: 2026-05-02
+- Risk: the Task 5 smoke checklist requires Task 4e marker strings, but `harness/CodexTvRuntimeCheck/js/stremio-remote.js` may not contain the same source and injection marker strings as `src/main.js`.
+- Impact: emulator smoke evidence can be blocked before page testing because the live harness/module source cannot be proven fresh against the documented marker contract.
+- Mitigation: before rerunning Task 5b, align the loaded module freshness proof with the current repo-tracked source marker, commit SHA, or source hash, then verify the live served module content through Web Inspector/CDP.
+
+## R-009: Current emulator debug path stops at the local harness page
+- Date: 2026-05-02
+- Risk: the current Task 3/Task 5 debug launch path opens `file:///index.html` for `CodexTvRuntimeCheck`, not `https://web.stremio.com/`.
+- Impact: even when the emulator and debug port are healthy, Task 5b cannot claim smoke evidence for the intended Stremio Web target from that launch path.
+- Mitigation: document and use a bridge path that loads `https://web.stremio.com/` while exposing the repo-tracked runtime module, then re-run Task 5b with live served-source verification.

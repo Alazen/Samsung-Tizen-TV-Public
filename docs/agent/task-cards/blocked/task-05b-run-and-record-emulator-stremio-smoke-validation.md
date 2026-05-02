@@ -2,10 +2,10 @@
 
 ## Status
 
-- State: active
+- State: blocked
 - Parent ExecPlan: `docs/agent/exec-plans/active/task-05-emulator-stremio-web-smoke-validation.md`
 - Current owner: Codex
-- Last updated: 2026-05-01
+- Last updated: 2026-05-02
 
 ## Objective
 
@@ -98,3 +98,34 @@ git diff --check -- PLAN.md docs/agent docs/validation
 - Validation run:
 - Result:
 - Risks:
+
+## Blocked notes
+
+- Date: 2026-05-02
+- Blocking reason:
+  - The emulator can now launch and attach, but the current debug path still does not satisfy Task 5b.
+  - The live debug target is the local harness page `file:///index.html`, not `https://web.stremio.com/`, so the required smoke target is not under test from this launch path.
+  - Source freshness still cannot be established for live smoke evidence. The repo-tracked harness module contains `isInteractiveControl`, but the live served `js/stremio-remote.js` fetched from the running debug target does not.
+- Evidence observed:
+  - `git rev-parse HEAD` -> `199b05ad3f384d9df49f88600aa4e1e6486fff52`
+  - `node -e "...marker/hash check..."` -> `src/main.js sourceMarker=true injectionMarker=true sha256=f35c6891b13a6229c154a10173a35bcb14b6a972f206aedf2fd3852e052d807f`
+  - `node -e "...marker/hash check..."` -> `harness/CodexTvRuntimeCheck/js/stremio-remote.js sourceMarker=false injectionMarker=false sha256=157a26938024e8ab6c6d7aa476000960f0c37efb16cb0600226b467c553c617b`
+  - `node -e "...harness hash check..."` -> `hasInteractiveControl=true`, `hasNamespace=true`
+  - `E:\tizen-studio\tools\emulator\bin\em-cli.bat launch -n T-samsung-10.0-x86_64` -> launched successfully in the desktop user context
+  - `E:\tizen-studio\tools\sdb.exe devices` -> `emulator-26101 device T-samsung-10.0-x86_64`
+  - `E:\tizen-studio\tools\tizen-core\tz.exe run -d -e emulator-26101 -w C:\Users\gabip\GitHub\Stremio-WebApp\harness\CodexTvRuntimeCheck` -> launched successfully with debug port `33211`
+  - `http://127.0.0.1:33211/json` -> debug page title `Codex TV Runtime Check`, URL `file:///index.html`, websocket `ws://127.0.0.1:33211/devtools/page/73275F01B8BC9425630466AA6D776370`
+  - CDP runtime snapshot -> `window.__STREMIO_TIZENBREW_REMOTE__` exists, `getState()` exists, registered keys include `Info`, and Tizen APIs are available in the local harness page
+  - CDP `fetch('js/stremio-remote.js')` inside the live debug target -> `length=47244`, `hasNamespace=true`, `hasSrcMarker=false`, `hasInjectionMarker=false`, `hasInteractiveControl=false`
+  - `git status --short --ignored harness/CodexTvRuntimeCheck` -> only ignored `harness/CodexTvRuntimeCheck/Debug/` output
+  - `git ls-files harness/CodexTvRuntimeCheck/Debug/*` -> no tracked generated Debug output
+- What approval or input is needed:
+  - Re-run Task 5b only after the bridge path under test actually loads `https://web.stremio.com/` and exposes the repo-tracked runtime in that target.
+  - Before accepting smoke observations, establish source freshness by aligning the loaded module evidence with the current repo-tracked source marker, commit SHA, or documented source hash, then proving the live served module content through the debug target.
+- Safe next action:
+  - Keep Task 5b blocked and document a bridge path that serves fresh repo-tracked runtime code in the real smoke target, then move the TaskCard back to `active/` for one bounded retry.
+- Result:
+  - `blocked`
+- Residual risks:
+  - Emulator validation remains local confidence only.
+  - Real Samsung TV plus TizenBrew validation remains mandatory and is not bypassed.

@@ -64,5 +64,49 @@ Use Samsung TV emulator checks for local runtime/tooling confidence.
   - live served JS parity check via `fetch('js/stremio-remote.js')`: not possible in this attempt
   - deterministic fresh-code emulator debug path remains unproven in the sandbox identity
 
+## Observed 2026-05-02 Task 5b blocked attempt
+
+- Pre-checks:
+  - `git rev-parse HEAD` returned `199b05ad3f384d9df49f88600aa4e1e6486fff52`
+  - `src/main.js` contained source marker `stremio-webapp-src-main-js-task4e-v1` and injection marker `stremio-webapp-runtime-injection-v1`
+  - `harness/CodexTvRuntimeCheck/js/stremio-remote.js` did not contain those Task 4e marker strings
+  - `git status --short --ignored harness/CodexTvRuntimeCheck` showed only ignored `Debug/` output
+  - `git ls-files harness/CodexTvRuntimeCheck/Debug/*` returned no tracked generated Debug output
+- Emulator availability:
+  - `E:\tizen-studio\tools\sdb.exe devices` returned no attached emulator devices
+- Debug launch path:
+  - command: `E:\tizen-studio\tools\tizen-core\tz.exe run -d -e emulator-26101 -w C:\Users\gabip\GitHub\Stremio-WebApp\harness\CodexTvRuntimeCheck`
+  - output: `target not found` and `serial number 'emulator-26101' wrong`
+  - the command was not retried because the TaskCard stops on repeated emulator-command failure and the device was not visible
+- Result:
+  - Task 5b result category: `blocked`
+  - Web Inspector attachment: not observed
+  - live served JS freshness check: not possible
+  - smoke checklist execution: not started
+  - real Samsung TV validation remains mandatory
+
+## Observed 2026-05-02 Task 5b retry after emulator launch
+
+- Emulator launch path:
+  - `E:\tizen-studio\tools\emulator\bin\em-cli.bat launch -n T-samsung-10.0-x86_64` succeeded in the desktop user context
+  - after boot, `E:\tizen-studio\tools\sdb.exe devices` listed `emulator-26101 device T-samsung-10.0-x86_64`
+- Debug launch path:
+  - `E:\tizen-studio\tools\tizen-core\tz.exe run -d -e emulator-26101 -w C:\Users\gabip\GitHub\Stremio-WebApp\harness\CodexTvRuntimeCheck`
+  - result: launched successfully with debug port `33211`
+  - debug page target: `file:///index.html`
+- Live runtime evidence:
+  - `window.__STREMIO_TIZENBREW_REMOTE__` existed in the debug target
+  - `getState()` existed and returned an initialized runtime snapshot
+  - Tizen APIs were available and `Info` was among the registered keys
+- Live source evidence:
+  - repo-tracked `harness/CodexTvRuntimeCheck/js/stremio-remote.js` still contained `isInteractiveControl`
+  - `fetch('js/stremio-remote.js')` inside the running debug target returned content that did not contain `isInteractiveControl`
+  - the live served module also did not contain `stremio-webapp-src-main-js-task4e-v1` or `stremio-webapp-runtime-injection-v1`
+- Result:
+  - Task 5b result category remained `blocked`
+  - the emulator/device blocker was cleared, but the live source-freshness blocker remained
+  - the current debug launch path also targets the local harness page rather than `https://web.stremio.com/`
+  - real Samsung TV validation remains mandatory
+
 ## Limitations
 Emulator outcomes do not replace real-device acceptance for TizenBrew injection and physical remote behavior.

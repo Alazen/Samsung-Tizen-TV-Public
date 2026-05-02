@@ -67,6 +67,90 @@ Record the outcome with:
 - Result category: `pass`, `partial`, or `blocked`
 - Residual risks for Task 5
 
+## Recorded runs
+
+### 2026-05-02 Task 5b blocked attempt
+
+- Date and environment:
+  - 2026-05-02, Codex sandbox on Windows PowerShell.
+- Emulator or debug target identifier:
+  - Expected target: `emulator-26101`.
+  - Actual target state: unavailable; `E:\tizen-studio\tools\sdb.exe devices` listed no attached emulator devices.
+- Source freshness marker:
+  - Required source marker: `stremio-webapp-src-main-js-task4e-v1`.
+  - Repo commit: `199b05ad3f384d9df49f88600aa4e1e6486fff52`.
+  - `src/main.js`: source marker present, injection marker present, SHA-256 `f35c6891b13a6229c154a10173a35bcb14b6a972f206aedf2fd3852e052d807f`.
+  - `harness/CodexTvRuntimeCheck/js/stremio-remote.js`: source marker absent, injection marker absent, SHA-256 `157a26938024e8ab6c6d7aa476000960f0c37efb16cb0600226b467c553c617b`.
+- Injection marker:
+  - Required injection marker: `stremio-webapp-runtime-injection-v1`.
+  - The marker was found in `src/main.js` but not in the repo-tracked harness module.
+- Served module URL or debug target:
+  - Not captured. The emulator target was unavailable, so no Web Inspector/CDP target could be used to prove live served module content.
+- Module injection or load evidence:
+  - Not captured. The page was not loaded because source freshness and emulator availability gates failed first.
+- `Info` diagnostics evidence:
+  - Not captured.
+- Optional key registration summary or soft failure:
+  - Not exercised.
+- Focus, navigation, Back, Exit, and media-key observations:
+  - Not exercised.
+- Console error summary:
+  - Not captured.
+- Command attempted:
+  - `E:\tizen-studio\tools\sdb.exe devices` returned no attached devices.
+  - `E:\tizen-studio\tools\tizen-core\tz.exe run -d -e emulator-26101 -w C:\Users\gabip\GitHub\Stremio-WebApp\harness\CodexTvRuntimeCheck` failed once with `target not found` and `serial number 'emulator-26101' wrong`.
+- Result category:
+  - `blocked`
+- Residual risks for Task 5:
+  - Task 5b cannot produce smoke evidence until the emulator is attached in the executing context.
+  - Live source freshness remains unproven; no emulator observations should be treated as evidence for the current repo source until the live served module content is checked.
+  - Task 6 real Samsung TV plus TizenBrew validation remains mandatory.
+
+### 2026-05-02 Task 5b retry after emulator launch
+
+- Date and environment:
+  - 2026-05-02, Codex sandbox on Windows PowerShell, with emulator launch performed in the desktop user context.
+- Emulator or debug target identifier:
+  - `emulator-26101`
+  - Debug page target from `http://127.0.0.1:33211/json`:
+    - title: `Codex TV Runtime Check`
+    - URL: `file:///index.html`
+    - websocket: `ws://127.0.0.1:33211/devtools/page/73275F01B8BC9425630466AA6D776370`
+- Source freshness marker:
+  - Required smoke marker: `stremio-webapp-src-main-js-task4e-v1`
+  - Repo commit: `199b05ad3f384d9df49f88600aa4e1e6486fff52`
+  - Repo harness module `harness/CodexTvRuntimeCheck/js/stremio-remote.js`: SHA-256 `157a26938024e8ab6c6d7aa476000960f0c37efb16cb0600226b467c553c617b`, `hasInteractiveControl=true`
+  - Live served `js/stremio-remote.js` fetched from the debug target: `length=47244`, `hasNamespace=true`, `hasSrcMarker=false`, `hasInjectionMarker=false`, `hasInteractiveControl=false`
+  - Freshness result: blocked, because the live served module does not match the repo-tracked harness/runtime evidence.
+- Injection marker:
+  - Required injection marker: `stremio-webapp-runtime-injection-v1`
+  - Not present in the live served module.
+- Served module URL or debug target:
+  - Live debug target URL was `file:///index.html`, not `https://web.stremio.com/`.
+- Module injection or load evidence:
+  - `window.__STREMIO_TIZENBREW_REMOTE__` exists.
+  - `getState()` exists and returned an initialized runtime snapshot in the local harness page.
+  - Registered keys included `Info`.
+  - `tizen`, `tizen.tvinputdevice`, and `tizen.application` were available.
+- `Info` diagnostics evidence:
+  - Not recorded as smoke evidence, because the source freshness gate already failed and the page under test was the local harness rather than `https://web.stremio.com/`.
+- Optional key registration summary or soft failure:
+  - Optional key registration appeared healthy in the local harness snapshot; no soft-fail was needed in this retry.
+- Focus, navigation, Back, Exit, and media-key observations:
+  - Not exercised for Task 5 evidence because the smoke target URL was not under test and source freshness was unproven.
+- Console error summary:
+  - No blocking console finding was needed to stop the run; the source-freshness and target-URL gates already blocked it.
+- Command attempted:
+  - `E:\tizen-studio\tools\emulator\bin\em-cli.bat launch -n T-samsung-10.0-x86_64`
+  - `E:\tizen-studio\tools\sdb.exe devices`
+  - `E:\tizen-studio\tools\tizen-core\tz.exe run -d -e emulator-26101 -w C:\Users\gabip\GitHub\Stremio-WebApp\harness\CodexTvRuntimeCheck`
+- Result category:
+  - `blocked`
+- Residual risks for Task 5:
+  - The current debug path reaches the local harness page, not `https://web.stremio.com/`.
+  - The live served module remains stale relative to the repo-tracked harness/runtime evidence.
+  - Task 6 real Samsung TV plus TizenBrew validation remains mandatory.
+
 ## Limitations
 
 - This smoke validation is not final acceptance.

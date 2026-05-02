@@ -56,7 +56,7 @@ A blocked TaskCard must include:
 
 ## Active TaskCards
 
-- Task 5b: `active/task-05b-run-and-record-emulator-stremio-smoke-validation.md` - next gated Task 5 slice; run the emulator smoke validation only after Task 4 local validation has passed, Task 5a is complete, and the bridge is explicitly started, then record results, residual risks, and Task 6 handoff notes
+- None.
 
 ## Completed TaskCards
 
@@ -74,6 +74,7 @@ A blocked TaskCard must include:
 ## Blocked TaskCards
 
 - Task 3B: `blocked/task-03b-validate-debug-command-path.md`
+- Task 5b: `blocked/task-05b-run-and-record-emulator-stremio-smoke-validation.md` - blocked because the current debug path reaches the local harness page instead of `https://web.stremio.com/` and the live served module freshness is still unproven; restore the real smoke target and prove live served module freshness before retrying
 
 ## Promotion rules
 
