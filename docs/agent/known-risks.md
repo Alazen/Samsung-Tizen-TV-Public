@@ -41,3 +41,15 @@
 - Risk: a Task 5 `web.stremio.com` emulator smoke pass can confirm local wiring, diagnostics, and navigation behavior, but it cannot prove final user acceptance on a real Samsung TV.
 - Impact: Task 5 could be mistaken for sign-off even though focus, back, media-key, or input behavior may differ on the real device.
 - Mitigation: require source freshness evidence before trusting live emulator observations, record pass/partial/blocked outcomes only, and keep Task 6 real-TV validation mandatory.
+
+## R-008: Emulator debug target can be the local harness instead of Stremio Web
+- Date: 2026-05-02
+- Risk: after restarting `T-samsung-10.0-x86_64`, `tz run -d` can succeed and expose a debug port while the live target is still `file:///index.html` from `CodexTvRuntimeCheck`, not `https://web.stremio.com/`.
+- Impact: a working debug port can be mistaken for a valid Task 5b smoke target even though it only proves the disposable local harness launched.
+- Mitigation: require `location.href` or equivalent debug-target evidence to show `https://web.stremio.com/` before running Task 5b smoke checks; use Task 5c to troubleshoot whether the harness can safely load Stremio Web or whether a different module launch path is required.
+
+## R-009: Harness runtime copy can drift from canonical runtime source
+- Date: 2026-05-02
+- Risk: `harness/CodexTvRuntimeCheck/js/stremio-remote.js` can serve stale code that lacks the canonical `src/main.js` source marker, injection marker, or interactive-control guard.
+- Impact: emulator observations can fail the freshness contract even when `src/main.js` is correct.
+- Mitigation: Task 5c should add or update a lightweight guard so stale harness runtime copies fail before emulator launch, and Task 5b must continue checking served source freshness in the live debug target.
