@@ -138,3 +138,21 @@ npm test
 ```
 
 If npm is unavailable, use the direct Node equivalents documented in `docs/agent/validation.md`.
+
+## Dependency metadata conventions
+
+Each TaskCard should declare:
+
+Depends on:
+- List prerequisite TaskCards or write `none`.
+
+Can run in parallel with:
+- List TaskCards that can safely run in parallel or write `unknown`.
+
+Conflicts with files:
+- List files or directories that would cause edit conflicts, or write `none known`.
+
+Execution assumptions:
+- If `Can run in parallel with` is `unknown`, assume sequential execution.
+- If two TaskCards edit the same file, assume conflict unless a TaskBatch explicitly says otherwise.
+- If a TaskCard depends on another TaskCard, do not start it until the dependency is completed and validation has passed.

@@ -26,3 +26,9 @@ Deliver a repository execution harness that allows small TaskCard-driven impleme
 
 ## Risks
 - Worker B package scripts may not yet exist; command definitions are documented now and should be verified once scripts land.
+
+
+## TaskBatch status table pattern
+
+When executing a multi-TaskCard campaign, record status using the TaskBatch table in `docs/agent/task-batches/index.md` with columns:
+`TaskCard`, `Status`, `Owner agent`, `Validation`, `Changed files`, `Blocker`.
