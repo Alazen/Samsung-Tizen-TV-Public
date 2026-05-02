@@ -18,6 +18,15 @@ Implement one bounded change.
 - Vendored docs unless explicitly requested
 - Secrets/signing material
 
+## Depends on
+- none
+
+## Can run in parallel with
+- unknown
+
+## Conflicts with files
+- none known
+
 ## Constraints
 - Keep scope within allowed files.
 - Do not add dependencies unless approved.

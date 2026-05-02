@@ -7,6 +7,23 @@
 - Current owner: Codex
 - Last updated: 2026-05-02
 
+## Blocking reason
+
+Task 5b remains blocked because the latest emulator relaunch proved the debug launch path can attach again, but it still did not satisfy the Task 5b target or source-freshness contract.
+
+Observed blocker:
+
+- Restarting `T-samsung-10.0-x86_64` cleared the previous launch-path timeout.
+- `sdb` saw `emulator-26101` again.
+- `tz run -d` succeeded with debug port `38333`.
+- The live debug target remained `file:///index.html`, not `https://web.stremio.com/`.
+- The served `js/stremio-remote.js` failed the freshness contract:
+  - `hasSrcMarker=false`
+  - `hasInjectionMarker=false`
+  - `hasInteractiveControl=false`
+
+Task 5c is now the active unblocker for troubleshooting the launch target and stale served runtime source.
+
 ## Objective
 
 Run the emulator smoke checklist after Task 5a is complete, then record the smoke result, residual risks, and Task 6 handoff notes without presenting emulator evidence as final acceptance.
@@ -49,7 +66,6 @@ Run the emulator smoke checklist after Task 5a is complete, then record the smok
 ## Constraints
 
 - Do not modify runtime behavior.
-- Do not start until Task 4 local validation has passed, Task 5a is complete, and Task 5 is explicitly started.
 - Do not use emulator evidence as final acceptance.
 - Require source freshness evidence before trusting any observation.
 - Record outcomes as `pass`, `partial`, or `blocked`.
@@ -89,6 +105,10 @@ git diff --check -- PLAN.md docs/agent docs/validation
 - Stop if the task requires runtime implementation changes.
 - Stop if recording results would require committing generated artifacts.
 - Stop if the result would be presented as final acceptance.
+
+## Safe next action
+
+Execute `docs/agent/task-cards/active/task-05c-troubleshoot-emulator-launch-target-and-source-freshness.md`.
 
 ## Report format
 

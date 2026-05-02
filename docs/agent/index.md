@@ -11,6 +11,8 @@ Read in this order:
 6. docs/agent/exec-plans/active/mvp.md
 7. docs/agent/decision-log.md
 8. docs/agent/known-risks.md
+9. docs/agent/task-batches/index.md
+10. .agents/skills/task-batch-executor/SKILL.md
 
 Task intake rules:
 - Work from one TaskCard at a time.

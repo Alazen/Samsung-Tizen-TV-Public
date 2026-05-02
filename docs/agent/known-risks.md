@@ -42,14 +42,20 @@
 - Impact: Task 5 could be mistaken for sign-off even though focus, back, media-key, or input behavior may differ on the real device.
 - Mitigation: require source freshness evidence before trusting live emulator observations, record pass/partial/blocked outcomes only, and keep Task 6 real-TV validation mandatory.
 
-## R-008: Harness module can lag source marker expectations
+## R-008: Emulator debug target can be the local harness instead of Stremio Web
 - Date: 2026-05-02
-- Risk: the Task 5 smoke checklist requires Task 4e marker strings, but `harness/CodexTvRuntimeCheck/js/stremio-remote.js` may not contain the same source and injection marker strings as `src/main.js`.
-- Impact: emulator smoke evidence can be blocked before page testing because the live harness/module source cannot be proven fresh against the documented marker contract.
-- Mitigation: before rerunning Task 5b, align the loaded module freshness proof with the current repo-tracked source marker, commit SHA, or source hash, then verify the live served module content through Web Inspector/CDP.
+- Risk: after restarting `T-samsung-10.0-x86_64`, `tz run -d` can succeed and expose a debug port while the live target is still `file:///index.html` from `CodexTvRuntimeCheck`, not `https://web.stremio.com/`.
+- Impact: a working debug port can be mistaken for a valid Task 5b smoke target even though it only proves the disposable local harness launched.
+- Mitigation: require `location.href` or equivalent debug-target evidence to show `https://web.stremio.com/` before running Task 5b smoke checks; use Task 5c to troubleshoot whether the harness can safely load Stremio Web or whether a different module launch path is required.
 
-## R-009: Current emulator debug path stops at the local harness page
+## R-009: Harness runtime copy can drift from canonical runtime source
 - Date: 2026-05-02
-- Risk: the current Task 3/Task 5 debug launch path opens `file:///index.html` for `CodexTvRuntimeCheck`, not `https://web.stremio.com/`.
-- Impact: even when the emulator and debug port are healthy, Task 5b cannot claim smoke evidence for the intended Stremio Web target from that launch path.
-- Mitigation: document and use a bridge path that loads `https://web.stremio.com/` while exposing the repo-tracked runtime module, then re-run Task 5b with live served-source verification.
+- Risk: `harness/CodexTvRuntimeCheck/js/stremio-remote.js` can serve stale code that lacks the canonical `src/main.js` source marker, injection marker, or interactive-control guard.
+- Impact: emulator observations can fail the freshness contract even when `src/main.js` is correct.
+- Mitigation: Task 5c should add or update a lightweight guard so stale harness runtime copies fail before emulator launch, and Task 5b must continue checking served source freshness in the live debug target.
+
+## R-010: Harness freshness contract can drift from the smoke-check marker contract
+- Date: 2026-05-02
+- Risk: the Task 5 smoke checklist requires the Task 4e marker strings, but the disposable harness runtime and the canonical runtime source can drift in which marker, hash, or guard is actually present.
+- Impact: emulator smoke evidence can be blocked before page testing because the live harness/module source cannot be proven fresh against the documented contract.
+- Mitigation: before rerunning Task 5b, align the loaded module freshness proof with the current repo-tracked source marker, commit SHA, or source hash, then verify the live served module content through Web Inspector/CDP.

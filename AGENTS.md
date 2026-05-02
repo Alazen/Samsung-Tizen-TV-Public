@@ -26,6 +26,8 @@ Stremio WebApp repository with a Tizen TV docs harness and execution harness doc
 - docs/agent/exec-plans/active/mvp.md
 - docs/agent/decision-log.md
 - docs/agent/known-risks.md
+- docs/agent/task-batches/index.md
+- .agents/skills/task-batch-executor/SKILL.md
 
 ## Commit and artifact safety
 - Before commit: run `git status --short`, then `git diff --cached --stat`, review staged paths, and call out unusually large staged files.

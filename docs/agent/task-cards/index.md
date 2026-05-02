@@ -56,7 +56,7 @@ A blocked TaskCard must include:
 
 ## Active TaskCards
 
-- None.
+- Task 5c: `active/task-05c-troubleshoot-emulator-launch-target-and-source-freshness.md` - current Task 5 unblocker; troubleshoot why the emulator debug target launches `file:///index.html` and serves stale `js/stremio-remote.js` instead of proving fresh runtime code on `https://web.stremio.com/`
 
 ## Completed TaskCards
 
@@ -70,11 +70,12 @@ A blocked TaskCard must include:
 - Task 4d: `completed/task-04d-focus-candidate-navigation.md` - completed local validation for focus candidate filtering, geometry navigation, module-owned UI exclusion, and soft-fail behavior
 - Task 4e: `completed/task-04e-back-exit-dialog-diagnostics-and-source-evidence-prep.md` - completed local validation for Back/Exit/dialog behavior, diagnostics evidence, and explicit source/injection markers
 - Task 5a: `completed/task-05a-prepare-emulator-stremio-smoke-checklist.md` - completed docs-only bridge-readiness checklist and evidence-rule routing for the emulator smoke bridge
+- task-agent-01: `completed/task-agent-01-taskbatch-execution-harness.md` - completed historical record for the docs-only TaskBatch harness and repo-local execution skill
 
 ## Blocked TaskCards
 
 - Task 3B: `blocked/task-03b-validate-debug-command-path.md`
-- Task 5b: `blocked/task-05b-run-and-record-emulator-stremio-smoke-validation.md` - blocked because the current debug path reaches the local harness page instead of `https://web.stremio.com/` and the live served module freshness is still unproven; restore the real smoke target and prove live served module freshness before retrying
+- Task 5b: `blocked/task-05b-run-and-record-emulator-stremio-smoke-validation.md` - blocked because the latest emulator relaunch reached debug port `38333`, but the live target remained `file:///index.html` and served stale `js/stremio-remote.js` without the required source marker, injection marker, or interactive-control guard
 
 ## Promotion rules
 
@@ -139,3 +140,21 @@ npm test
 ```
 
 If npm is unavailable, use the direct Node equivalents documented in `docs/agent/validation.md`.
+
+## Dependency metadata conventions
+
+Each TaskCard should declare:
+
+Depends on:
+- List prerequisite TaskCards or write `none`.
+
+Can run in parallel with:
+- List TaskCards that can safely run in parallel or write `unknown`.
+
+Conflicts with files:
+- List files or directories that would cause edit conflicts, or write `none known`.
+
+Execution assumptions:
+- If `Can run in parallel with` is `unknown`, assume sequential execution.
+- If two TaskCards edit the same file, assume conflict unless a TaskBatch explicitly says otherwise.
+- If a TaskCard depends on another TaskCard, do not start it until the dependency is completed and validation has passed.

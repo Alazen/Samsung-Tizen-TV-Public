@@ -4,7 +4,7 @@
 
 Task 3, Emulator Debug Harness Decision, is closed as blocked under Decision B.
 Task 4 is active with Task 4a, Task 4b, Task 4c, Task 4d, and Task 4e completed. The final runtime slice closed out Back, Exit, dialog behavior, diagnostics, and source-evidence prep.
-Task 5 is the emulator smoke-validation bridge against `https://web.stremio.com/`; merged Task 5a bridge readiness checklist and evidence-rules review is complete as a docs-only slice. Task 5b remains blocked after the 2026-05-02 retry against commit `7fdd3acef4a385da4396a776c45cc558a6cd2fec`: the emulator relaunch and debug attach succeeded, but the current debug path still reaches `file:///index.html` instead of `https://web.stremio.com/`, and live served source freshness is still unproven. It never replaces real Samsung TV acceptance.
+Task 5 is the active emulator smoke-validation bridge against `https://web.stremio.com/`. Task 5a bridge readiness checklist and evidence-rules review is complete as a docs-only slice. Task 5b remains blocked after the 2026-05-02 retry against commit `7fdd3acef4a385da4396a776c45cc558a6cd2fec`: the emulator relaunch and debug attach succeeded, but the live target remained `file:///index.html` and served stale `js/stremio-remote.js` without the required source marker, injection marker, or interactive-control guard. Task 5c is now the active unblocker to troubleshoot the launch target and source-freshness path before retrying Task 5b. Task 5 never replaces real Samsung TV acceptance.
 Task 6 is the real Samsung TV plus TizenBrew validation gate and final acceptance path.
 
 Active plan:
@@ -26,7 +26,8 @@ Task 4 status:
 
 Task 5 status:
 - Task 5a: `docs/agent/task-cards/completed/task-05a-prepare-emulator-stremio-smoke-checklist.md` - completed docs-only bridge-readiness checklist, source freshness rules, injection evidence rules, and result rubric routing
-- Task 5b: `docs/agent/task-cards/blocked/task-05b-run-and-record-emulator-stremio-smoke-validation.md` - blocked until the smoke bridge reaches `https://web.stremio.com/` and the live served runtime code is proven fresh
+- Task 5b: `docs/agent/task-cards/blocked/task-05b-run-and-record-emulator-stremio-smoke-validation.md` - blocked after the emulator relaunched and exposed debug port `38333`, because the live debug target was still `file:///index.html` and served stale `js/stremio-remote.js`
+- Task 5c: `docs/agent/task-cards/active/task-05c-troubleshoot-emulator-launch-target-and-source-freshness.md` - active unblocker to troubleshoot the launch target and stale source-freshness path before retrying Task 5b
 
 TaskCard index:
 - `docs/agent/task-cards/index.md`
