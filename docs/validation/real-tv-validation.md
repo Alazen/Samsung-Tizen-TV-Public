@@ -24,6 +24,17 @@ When TizenBrew is configured with the branch reference above, future pushed comm
 
 Use a pinned commit SHA only for a stable release candidate after a real-TV pass.
 
+## Agent release-note requirement
+
+Any agent that changes `src/main.js`, `src/styles.css`, runtime behavior, diagnostics, key handling, or TizenBrew-facing package metadata must also:
+
+- bump `package.json` `version` before final validation;
+- mention the new version in the final report;
+- tell the user to reopen TizenBrewNextGeneration and confirm the module card shows that version;
+- avoid claiming real-TV validation from a stale version.
+
+Docs-only changes do not require a package version bump.
+
 ## Procedure
 
 1. Install and enable the module through the TizenBrew flow.
@@ -43,9 +54,14 @@ Use a pinned commit SHA only for a stable release candidate after a real-TV pass
 - Home screen loaded after login.
 - Playback can start and video content can play.
 - `Info` did not open diagnostics on the home screen.
+- Color buttons A/B/C/D also did not open diagnostics on the home screen.
 - In the video player, Play/Pause, seek/skip, player navigation, and Back did not work.
 
 Current result: `partial` for install and launch, `blocked` for remote-control acceptance.
+
+## Current root-cause signal
+
+Because neither `Info` nor A/B/C/D opened diagnostics, the failure is broader than a single Info-key mapping. The next implementation should investigate real-TV key event delivery, optional-key registration, TizenBrew injection timing, and fallback event paths before assuming the focus algorithm alone is the blocker.
 
 ## Acceptance note
 
