@@ -2,159 +2,95 @@
 
 ## Status
 
-- State: completed
+- State: completed troubleshooting slice, retained for routing context while the narrower Task 5d target-equivalent path remains active.
 - Parent ExecPlan: `docs/agent/exec-plans/active/task-05-emulator-stremio-web-smoke-validation.md`
 - Current owner: Codex
 - Last updated: 2026-05-02
+
+## Public documentation privacy note
+
+Use placeholders for local checkout paths, Tizen Studio roots, emulator IDs, emulator profile names, debug ports, CDP target IDs, Windows usernames, machine-specific folders, and signing profile names. Raw local logs should stay outside the repository or be redacted before commit.
 
 ## Objective
 
 Unblock Task 5b by troubleshooting why the live Samsung TV emulator debug target launches `file:///index.html` from the disposable harness and serves stale `js/stremio-remote.js` content instead of proving fresh runtime code on `https://web.stremio.com/`.
 
-This is an unblocker and troubleshooting slice. It may make the smallest safe harness, test, or documentation changes needed to establish a repeatable fresh-code debug path. It must not weaken Task 5b evidence requirements, and it must not mark the emulator smoke validation as passed.
+This is an unblocker and troubleshooting slice. It must not weaken Task 5b evidence requirements, and it must not mark the emulator smoke validation as passed.
 
 ## Triggering evidence
 
-- Restarting `T-samsung-10.0-x86_64` cleared the previous launch-path timeout.
-- `sdb` saw `emulator-26101` again.
-- `tz run -d` succeeded and exposed debug port `38333`.
+- Restarting `<emulator-profile>` cleared the previous launch-path timeout.
+- `sdb` saw `<emulator-id>` again.
+- `tz run -d` succeeded and exposed debug port `<debug-port>`.
 - The live target remained `file:///index.html`, not `https://web.stremio.com/`.
-- The served `js/stremio-remote.js` failed the freshness contract:
-  - `hasSrcMarker=false`
-  - `hasInjectionMarker=false`
-  - `hasInteractiveControl=false`
-
-## Required context
-
-### Files to read
-
-- `PLAN.md`
-- `package.json`
-- `AGENTS.md`
-- `docs/agent/validation.md`
-- `docs/agent/known-risks.md`
-- `docs/validation/emulator-validation.md`
-- `docs/validation/emulator-stremio-web-smoke-validation.md`
-- `docs/agent/exec-plans/active/task-05-emulator-stremio-web-smoke-validation.md`
-- `docs/agent/task-cards/blocked/task-05b-run-and-record-emulator-stremio-smoke-validation.md`
-- `harness/CodexTvRuntimeCheck/config.xml`
-- `harness/CodexTvRuntimeCheck/index.html`
-- `harness/CodexTvRuntimeCheck/js/stremio-remote.js`
-- `src/main.js`
-- `tests/manifest.test.js`
-- `tests/syntax.test.js`
+- The served `js/stremio-remote.js` failed the freshness contract: `hasSrcMarker=false`, `hasInjectionMarker=false`, `hasInteractiveControl=false`.
 
 ## Files allowed to edit
 
-- `harness/CodexTvRuntimeCheck/config.xml`
-- `harness/CodexTvRuntimeCheck/index.html`
-- `harness/CodexTvRuntimeCheck/js/stremio-remote.js`
-- `tests/manifest.test.js`
-- `tests/syntax.test.js`
-- `docs/validation/emulator-validation.md`
-- `docs/validation/emulator-stremio-web-smoke-validation.md`
-- `docs/agent/known-risks.md`
-- `docs/agent/task-cards/index.md`
-- `docs/agent/exec-plans/active/task-05-emulator-stremio-web-smoke-validation.md`
+Original troubleshooting slice:
+
+- disposable emulator harness files
+- validation docs
+- known risks
+- TaskCard indexes and active Task 5 ExecPlan
 - `PLAN.md`
-- `docs/agent/decision-log.md`, only if a durable decision is created
+- decision log only if a durable decision is created
+
+For the public-docs redaction follow-up, edit docs only.
 
 ## Files forbidden
 
 - `src/main.js`, except for inspection only
-- Package manifests and lockfiles, unless the user explicitly approves a follow-up change
+- Package manifests and lockfiles, unless explicitly approved
 - Runtime behavior changes outside the disposable emulator harness
 - Vendor docs
 - Generated artifacts and local build outputs
-- Logs, caches, packaged app outputs, signing material, certificate passwords, and secrets
+- Logs, caches, packaged app outputs, signing material, certificate passphrases, and credentials
 
 ## Constraints
 
 - Do not weaken Task 5b source-freshness requirements.
 - Do not treat `file:///index.html` as equivalent to `https://web.stremio.com/` for Task 5b.
 - Do not mark Task 5b as passed from local-harness evidence.
-- Prefer proving why the current launch path is wrong before changing files.
-- Prefer a minimal harness/source-sync fix before broad harness redesign.
 - Keep Task 6 real Samsung TV validation mandatory.
-- If the real `https://web.stremio.com/` debug target cannot be launched from the current harness without signing, unsupported privileges, or undocumented behavior, record that blocker instead of changing product runtime code.
-
-## Troubleshooting target
-
-Codex should determine which of these is true and act accordingly:
-
-1. The disposable `CodexTvRuntimeCheck` harness is only suitable for local fixture validation and cannot be the Task 5b web smoke target.
-2. The harness launch target can safely be adjusted to load `https://web.stremio.com/` for emulator smoke validation.
-3. The harness copy of `js/stremio-remote.js` is stale and needs a repeatable repo-tracked sync or guard against drift.
-4. The correct Task 5b path is a different TizenBrew/module launch path, not the disposable harness.
-5. The emulator can reach `https://web.stremio.com/`, but module injection must be proven through a different debug target or served-module URL.
+- If the real Stremio Web debug target cannot be launched from the current harness without signing material, unsupported privileges, or undocumented behavior, record that blocker instead of changing product runtime code.
 
 ## Exact implementation target
 
-Make the smallest safe change that either:
-
-- establishes a repeatable debug path where `location.href` is `https://web.stremio.com/` and the served runtime source contains `stremio-webapp-src-main-js-task4e-v1`, `stremio-webapp-runtime-injection-v1`, and the interactive-control guard; or
-- records a precise blocker explaining why that cannot be done in the current harness/toolchain and what TaskCard should be created next.
-
-If a fix is made, add or update a lightweight guard so future validation fails before emulator launch when the harness runtime copy is stale against the canonical runtime source markers.
+Make the smallest safe change that either establishes a repeatable `https://web.stremio.com/` debug path with fresh runtime source evidence, or records a precise blocker explaining why that cannot be done in the current harness/toolchain.
 
 ## Validation
-
-Run narrow validation first:
 
 ```bash
 npm run check:syntax
 npm run check:manifest
 npm test
-```
-
-Run docs/static validation after documentation updates:
-
-```bash
 git diff --check -- PLAN.md docs/agent docs/validation
 ```
 
-If the emulator path is available, rerun the live debug checks:
+If the emulator path is available, rerun live debug checks with placeholders in public docs:
 
 ```bash
-E:\tizen-studio\tools\sdb.exe devices
-E:\tizen-studio\tools\tizen-core\tz.exe run -d -e emulator-26101 -w C:\Users\gabip\GitHub\Stremio-WebApp\harness\CodexTvRuntimeCheck
+<tizen-studio-root>\tools\sdb.exe devices
+<tizen-studio-root>\tools\tizen-core\tz.exe run -d -e <emulator-id> -w <repo-root>\harness\CodexTvRuntimeCheck
 ```
 
-Then inspect the live debug target and record:
-
-- debug port
-- `location.href`
-- served module URL
-- `hasSrcMarker`
-- `hasInjectionMarker`
-- `hasInteractiveControl`
-- `Boolean(window.__STREMIO_TIZENBREW_REMOTE__)`
-- `window.__STREMIO_TIZENBREW_REMOTE__?.getState?.()` if available
-
-## Done when
-
-- The launch-target/source-freshness root cause is documented.
-- Either a minimal safe fix is implemented and validated, or a precise blocker is recorded.
-- Task 5b remains blocked unless the live target is `https://web.stremio.com/` and source freshness can be proven.
-- If Task 5b is unblocked, it is moved back to `docs/agent/task-cards/active/` or a clear next TaskCard is created for the resumed smoke run.
-- Residual risks are updated.
-- Task 6 real Samsung TV validation remains mandatory.
+Record `location.href`, served module URL, marker booleans, and `window.__STREMIO_TIZENBREW_REMOTE__` state.
 
 ## Outcome
 
 - The disposable `CodexTvRuntimeCheck` harness is confirmed to be a local fixture/debug vehicle only and not a valid Task 5b smoke target.
-- The correct Task 5 bridge model is now documented as the real TizenBrew site-modification module path targeting `https://web.stremio.com/`.
-- The public GitHub/jsDelivr hosting gate for the pinned commit is now cleared, so future bridge work should not retry the old 404 assumption.
-- The next blocker is no longer repo hosting or harness freshness. It is the emulator-side TizenBrew standalone service/debug path, which did not expose a fresh Stremio Web debug target in the first Task 5d retry.
+- The correct Task 5 bridge model is the real TizenBrew site-modification module path targeting `https://web.stremio.com/`.
+- Public GitHub/jsDelivr hosting for the pinned commit is cleared.
+- The next blocker is emulator-side TizenBrew standalone service/debug observability.
 - Next action: execute `docs/agent/task-cards/active/task-05d-run-tizenbrew-emulator-target-equivalent-smoke.md` and keep Task 5b blocked until that path yields target-equivalent runtime evidence.
 
 ## Stop conditions
 
-- Stop if fixing the issue requires signing material, certificate passwords, production data, or generated packaged artifacts.
+- Stop if fixing the issue requires signing material, certificate passphrases, production data, or generated packaged artifacts.
 - Stop if the same emulator command fails twice for the same reason.
 - Stop if the only available evidence comes from `file:///index.html` but the task needs `https://web.stremio.com/`.
-- Stop if the fix requires unsupported TV privileges or undocumented device behavior.
-- Stop if the fix would change product runtime behavior instead of the disposable emulator harness or validation guard.
+- Stop if the fix would change product runtime behavior.
 
 ## Report format
 

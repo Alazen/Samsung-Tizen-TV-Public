@@ -1,0 +1,7 @@
+﻿{
+  "modules": [
+    "npm/@foxreis/tizentube"
+  ],
+  "autoLaunchServiceList": [],
+  "autoLaunchModule": "npm/@foxreis/tizentube"
+}

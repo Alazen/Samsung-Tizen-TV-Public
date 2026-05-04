@@ -7,41 +7,27 @@
 - Current owner: Codex
 - Last updated: 2026-05-02
 
+## Public documentation privacy note
+
+Use placeholders for local checkout paths, Tizen Studio roots, emulator IDs, emulator profile names, debug ports, CDP target IDs, Windows usernames, machine-specific folders, and signing profile names. Raw local logs should stay outside the repository or be redacted before commit.
+
 ## Blocking reason
 
 Task 5b remains blocked because the latest emulator relaunch proved the debug launch path can attach again, but it still did not satisfy the Task 5b target or source-freshness contract.
 
 Observed blocker:
 
-- Restarting `T-samsung-10.0-x86_64` cleared the previous launch-path timeout.
-- `sdb` saw `emulator-26101` again.
-- `tz run -d` succeeded with debug port `38333`.
+- Restarting `<emulator-profile>` cleared the previous launch-path timeout.
+- `sdb` saw `<emulator-id>` again.
+- `tz run -d` succeeded with debug port `<debug-port>`.
 - The live debug target remained `file:///index.html`, not `https://web.stremio.com/`.
-- The served `js/stremio-remote.js` failed the freshness contract:
-  - `hasSrcMarker=false`
-  - `hasInjectionMarker=false`
-  - `hasInteractiveControl=false`
+- The served `js/stremio-remote.js` failed the freshness contract: `hasSrcMarker=false`, `hasInjectionMarker=false`, `hasInteractiveControl=false`.
 
-Task 5c is now the active unblocker for troubleshooting the launch target and stale served runtime source.
+Task 5c documented the launch-target and stale-source root cause. The narrower Task 5d path is the current target-equivalent follow-up. Task 5b stays blocked until that path yields `https://web.stremio.com/` runtime evidence.
 
 ## Objective
 
 Run the emulator smoke checklist after Task 5a is complete, then record the smoke result, residual risks, and Task 6 handoff notes without presenting emulator evidence as final acceptance.
-
-## Required context
-
-### Files to read
-
-- `PLAN.md`
-- `docs/agent/exec-plans/active/task-04-runtime-core.md`
-- `docs/agent/exec-plans/active/task-05-emulator-stremio-web-smoke-validation.md`
-- `docs/agent/task-cards/index.md`
-- `docs/agent/validation.md`
-- `docs/validation/emulator-validation.md`
-- `docs/validation/emulator-stremio-web-smoke-validation.md`
-- `docs/validation/real-tv-validation.md`
-- `docs/product/acceptance.md`
-- `docs/agent/known-risks.md`
 
 ## Files allowed to edit
 
@@ -61,7 +47,7 @@ Run the emulator smoke checklist after Task 5a is complete, then record the smok
 - Package manifests and lockfiles
 - Vendor docs
 - Generated artifacts and local build outputs
-- Logs, caches, packaged app outputs, signing material, and secrets
+- Logs, caches, packaged app outputs, signing material, certificate passphrases, and credentials
 
 ## Constraints
 
@@ -72,17 +58,7 @@ Run the emulator smoke checklist after Task 5a is complete, then record the smok
 - Keep Task 6 real Samsung TV validation mandatory.
 - If the run is blocked, record the blocker instead of a pass/fail claim.
 
-## Documentation obligations
-
-- Must update `docs/validation/emulator-stremio-web-smoke-validation.md` with run evidence and final result summary.
-- Must update `docs/validation/emulator-validation.md` if the procedure or guidance changes.
-- Must update `docs/agent/known-risks.md` if a new durable limitation is discovered.
-- Decision log update required: only if a durable decision is created.
-- PLAN.md update required: yes, if task status, result, or routing changes.
-
 ## Validation
-
-Primary docs validation:
 
 ```bash
 git diff --check -- PLAN.md docs/agent docs/validation
@@ -97,18 +73,25 @@ git diff --check -- PLAN.md docs/agent docs/validation
 - Residual risks are recorded.
 - Task 6 real-TV validation remains mandatory.
 
-## Stop conditions
-
-- Stop if the same emulator command fails twice.
-- Stop if source freshness cannot be established.
-- Stop if the task would bypass real-TV validation.
-- Stop if the task requires runtime implementation changes.
-- Stop if recording results would require committing generated artifacts.
-- Stop if the result would be presented as final acceptance.
-
 ## Safe next action
 
-Execute `docs/agent/task-cards/active/task-05c-troubleshoot-emulator-launch-target-and-source-freshness.md`.
+Execute `docs/agent/task-cards/active/task-05d-run-tizenbrew-emulator-target-equivalent-smoke.md` if that TaskCard exists in the branch. Otherwise keep Task 5c as the active unblocker until a narrower TaskCard is created.
+
+## Blocked notes
+
+- Date: 2026-05-02
+- Blocking reason: the emulator can launch and attach, but the live debug target is the local harness page `file:///index.html`, not `https://web.stremio.com/`, and source freshness cannot be established for live smoke evidence.
+- Evidence observed:
+  - Repo commit: `199b05ad3f384d9df49f88600aa4e1e6486fff52`.
+  - `src/main.js`: source marker present, injection marker present, SHA-256 `f35c6891b13a6229c154a10173a35bcb14b6a972f206aedf2fd3852e052d807f`.
+  - `harness/CodexTvRuntimeCheck/js/stremio-remote.js`: source marker absent, injection marker absent, SHA-256 `157a26938024e8ab6c6d7aa476000960f0c37efb16cb0600226b467c553c617b`.
+  - Emulator launch command shape: `<tizen-studio-root>\tools\tizen-core\tz.exe run -d -e <emulator-id> -w <repo-root>\harness\CodexTvRuntimeCheck`.
+  - Debug target: `http://127.0.0.1:<debug-port>/json`, URL `file:///index.html`, websocket `ws://127.0.0.1:<debug-port>/devtools/page/<target-id>`.
+  - Local harness runtime existed and `getState()` returned initialized state, but this evidence does not count for Stremio Web smoke validation.
+  - Live served module returned `length=47244`, `hasNamespace=true`, `hasSrcMarker=false`, `hasInjectionMarker=false`, `hasInteractiveControl=false`.
+- Safe next action: keep Task 5b blocked and use a bridge path that serves fresh repo-tracked runtime code in the real smoke target.
+- Result: `blocked`.
+- Residual risks: emulator validation remains local confidence only; real Samsung TV plus TizenBrew validation remains mandatory.
 
 ## Report format
 
@@ -118,34 +101,3 @@ Execute `docs/agent/task-cards/active/task-05c-troubleshoot-emulator-launch-targ
 - Validation run:
 - Result:
 - Risks:
-
-## Blocked notes
-
-- Date: 2026-05-02
-- Blocking reason:
-  - The emulator can now launch and attach, but the current debug path still does not satisfy Task 5b.
-  - The live debug target is the local harness page `file:///index.html`, not `https://web.stremio.com/`, so the required smoke target is not under test from this launch path.
-  - Source freshness still cannot be established for live smoke evidence. The repo-tracked harness module contains `isInteractiveControl`, but the live served `js/stremio-remote.js` fetched from the running debug target does not.
-- Evidence observed:
-  - `git rev-parse HEAD` -> `199b05ad3f384d9df49f88600aa4e1e6486fff52`
-  - `node -e "...marker/hash check..."` -> `src/main.js sourceMarker=true injectionMarker=true sha256=f35c6891b13a6229c154a10173a35bcb14b6a972f206aedf2fd3852e052d807f`
-  - `node -e "...marker/hash check..."` -> `harness/CodexTvRuntimeCheck/js/stremio-remote.js sourceMarker=false injectionMarker=false sha256=157a26938024e8ab6c6d7aa476000960f0c37efb16cb0600226b467c553c617b`
-  - `node -e "...harness hash check..."` -> `hasInteractiveControl=true`, `hasNamespace=true`
-  - `E:\tizen-studio\tools\emulator\bin\em-cli.bat launch -n T-samsung-10.0-x86_64` -> launched successfully in the desktop user context
-  - `E:\tizen-studio\tools\sdb.exe devices` -> `emulator-26101 device T-samsung-10.0-x86_64`
-  - `E:\tizen-studio\tools\tizen-core\tz.exe run -d -e emulator-26101 -w C:\Users\gabip\GitHub\Stremio-WebApp\harness\CodexTvRuntimeCheck` -> launched successfully with debug port `33211`
-  - `http://127.0.0.1:33211/json` -> debug page title `Codex TV Runtime Check`, URL `file:///index.html`, websocket `ws://127.0.0.1:33211/devtools/page/73275F01B8BC9425630466AA6D776370`
-  - CDP runtime snapshot -> `window.__STREMIO_TIZENBREW_REMOTE__` exists, `getState()` exists, registered keys include `Info`, and Tizen APIs are available in the local harness page
-  - CDP `fetch('js/stremio-remote.js')` inside the live debug target -> `length=47244`, `hasNamespace=true`, `hasSrcMarker=false`, `hasInjectionMarker=false`, `hasInteractiveControl=false`
-  - `git status --short --ignored harness/CodexTvRuntimeCheck` -> only ignored `harness/CodexTvRuntimeCheck/Debug/` output
-  - `git ls-files harness/CodexTvRuntimeCheck/Debug/*` -> no tracked generated Debug output
-- What approval or input is needed:
-  - Re-run Task 5b only after the bridge path under test actually loads `https://web.stremio.com/` and exposes the repo-tracked runtime in that target.
-  - Before accepting smoke observations, establish source freshness by aligning the loaded module evidence with the current repo-tracked source marker, commit SHA, or documented source hash, then proving the live served module content through the debug target.
-- Safe next action:
-  - Keep Task 5b blocked and document a bridge path that serves fresh repo-tracked runtime code in the real smoke target, then move the TaskCard back to `active/` for one bounded retry.
-- Result:
-  - `blocked`
-- Residual risks:
-  - Emulator validation remains local confidence only.
-  - Real Samsung TV plus TizenBrew validation remains mandatory and is not bypassed.
