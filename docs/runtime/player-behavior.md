@@ -2,36 +2,43 @@
 
 Playback remains owned by Stremio Web. The module provides conservative remote-control fallbacks when the real TV does not deliver usable native player button behavior.
 
-## Module responsibilities
+## Version 0.1.2 behavior
 
-- Map remote/media keys to existing player actions where safely detectable.
-- Avoid overriding Stremio playback internals.
-- Preserve compatibility across browser-like and Tizen runtime contexts.
-- Prefer direct control of the active visible `<video>` element when native player controls are not reachable.
+Version `0.1.2` uses the sanitized player DOM samples to prefer Stremio-specific controls before generic fallbacks. The samples guide selector design only. Real Samsung TV validation remains the acceptance gate.
 
-## Real-TV fallback behavior
+## Media handling order
 
-The real Samsung TV test showed that video playback could start, but Play/Pause, seek/skip, player navigation, and Back did not work. The runtime now treats this as a first-class player fallback case.
+Play/Pause:
 
-Media handling order:
+1. Find the largest visible active `<video>` element.
+2. Toggle `video.play()` or `video.pause()` directly.
+3. If direct video control fails, click a visible Stremio play or pause control from `stremioSelectorGroups.playerControls`.
+4. Record the result in diagnostics.
 
-1. Find the largest visible `<video>` element in the current document.
-2. For Play/Pause, call `video.play()` or `video.pause()` directly.
-3. For fast-forward and rewind, adjust `video.currentTime` by the configured seek step.
-4. For Stop, pause the video and reset `currentTime` to zero.
-5. Record the outcome in diagnostics without throwing when no video is found.
+Seek:
+
+1. Find the largest visible active `<video>` element.
+2. Adjust `video.currentTime` by the configured seek step.
+3. Clamp between zero and duration when duration is known.
+4. If direct seek fails, click visible seek or progress controls when available.
+5. Record the result in diagnostics.
+
+Stop:
+
+1. Pause the visible video.
+2. Reset `currentTime` to zero when writable.
+3. Record the result in diagnostics.
+
+## Player navigation
+
+When a player or visible video is active, directional navigation is restricted to player overlay and player control candidates when possible. This prevents arrow keys from jumping to home, sidebar, or background cards during playback.
+
+If no player controls are visible, the runtime attempts a safe player wake fallback, then keeps navigation scoped to the player before returning to generic behavior.
 
 ## Diagnostics evidence
 
-Diagnostics must expose:
-
-- whether a video element was found;
-- paused state;
-- current time;
-- duration;
-- the last player action result;
-- the last raw key event that triggered the player path.
+Diagnostics must expose whether a video element was found, paused state, current time, duration, the last player action result, selector source, and the last raw key event that triggered the player path.
 
 ## Acceptance note
 
-A real-TV player pass requires playback to start, Play/Pause to toggle playback, seek forward/back to adjust playback position, and Back to leave the player or return to the previous Stremio screen.
+A real-TV player pass requires playback to start, Play/Pause to toggle playback, seek forward and backward to adjust playback position, player overlay navigation to stay in the player context, and Back to leave the player or return to the previous Stremio screen.

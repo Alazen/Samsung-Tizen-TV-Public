@@ -3,10 +3,10 @@
 ## Status
 
 - State: active
-- Current owner: Codex or manual runtime fix executor
+- Current owner: manual runtime fix executor
 - Last updated: 2026-05-04
 - Current result: install and launch are partially validated; remote-control acceptance is blocked.
-- Next action: test version `0.1.1` real-TV key event fallback, diagnostics, player controls, and Back behavior.
+- Next action: test version `0.1.2` real-TV DOM-sample selector handling, diagnostics, player controls, and Back behavior.
 
 ## Goal
 
@@ -37,25 +37,27 @@ For every runtime change intended for TV retest, bump `package.json` `version`, 
 
 ## Root-cause signal
 
-Because neither `Info` nor A/B/C/D opened diagnostics, the failure is broader than a single Info-key mapping. Version `0.1.1` adds fallback listener paths, Samsung keyCode mapping, Tizen hardware Back handling, richer diagnostics, direct video controls, and player Back fallbacks.
+Because neither `Info` nor A/B/C/D opened diagnostics, the failure is broader than a single Info-key mapping. Version `0.1.2` keeps the v0.1.1 listener fallback strategy and adds a visible boot badge, repeat diagnostics fallback, Stremio-specific selector groups derived from sanitized DOM samples, candidate scoring, precise player control selection, direct video fallback, player-scoped navigation, player-aware Back behavior, and auth/login focus improvements.
 
-## Implementation summary for version 0.1.1
+## Implementation summary for version 0.1.2
 
-- Runtime version is bumped to `0.1.1`.
-- `package.json` version is bumped to `0.1.1` so the TizenBrew card can prove the TV loaded the new test build.
+- Runtime version is bumped to `0.1.2`.
+- `package.json` version is bumped to `0.1.2` so the TizenBrew card can prove the TV loaded the new test build.
 - `src/main.js` and the disposable harness runtime copy stay hash-identical.
-- Diagnostics include raw event path, event type, key, code, keyCode, which, keyName, normalized key, video state, and listener paths.
+- Selector design uses sanitized Stremio DOM samples while preserving generic fallback selectors.
+- Fixture tests cover sample availability, privacy checks, selector coverage, runtime selector contract, and harness parity.
+- Diagnostics include the boot badge, raw event path, event type, key, code, keyCode, which, keyName, normalized key, video state, candidate groups, and listener paths.
 - Key listeners attach to document/window `keydown`, `keyup`, `keypress`, and `tizenhwkey`.
 - Common Samsung keyCode values are mapped for Back, Info, color keys, media keys, arrows, and Enter.
 - Media keys control the active visible `<video>` element directly when Stremio controls are not reachable.
-- Back tries to leave the player through visible controls, Escape fallback, or history fallback before showing the module exit modal.
+- Back closes diagnostics, closes module modal state, blurs editables, closes player menus, clicks player Back or Close controls, dispatches Escape, then uses history fallback before opening the module exit modal.
 
 ## Steps
 
-1. Extract the version `0.1.1` fix at the branch root.
+1. Extract the version `0.1.2` fix at the branch root.
 2. Run validation commands.
 3. Commit and push to `Stremio-WebApp`.
-4. Reopen TizenBrewNextGeneration and confirm the module card shows `0.1.1`.
+4. Reopen TizenBrewNextGeneration and confirm the module card shows `0.1.2`.
 5. Execute the acceptance procedure in `docs/validation/real-tv-validation.md`.
 6. Record results and remaining risks.
 
@@ -68,4 +70,4 @@ Because neither `Info` nor A/B/C/D opened diagnostics, the failure is broader th
 
 ## Stop conditions
 
-Stop if required validation access depends on unavailable signing secrets, Seller Office-only capabilities, generated artifacts, package/lockfile dependency changes, or raw local logs.
+Stop if required validation access depends on unavailable signing secrets, Seller Office-only capabilities, generated artifacts, package or lockfile dependency changes, or raw local logs.

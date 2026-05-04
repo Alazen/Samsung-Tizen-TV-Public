@@ -35,17 +35,6 @@ Any agent that changes `src/main.js`, `src/styles.css`, runtime behavior, diagno
 
 Docs-only changes do not require a package version bump.
 
-## Procedure
-
-1. Install and enable the module through the TizenBrew flow.
-2. Confirm the module card shows the expected `package.json` version.
-3. Launch Stremio Web through TizenBrew.
-4. Validate diagnostics on the home screen.
-5. Validate remote navigation and focus behavior in real Stremio pages.
-6. Validate media-key behavior during playback.
-7. Validate Back and Exit handling.
-8. Record pass, partial, or blocked plus residual risks.
-
 ## Current real-TV evidence
 
 - TizenBrew loaded the GitHub module metadata and showed `Stremio Web TV Remote`.
@@ -59,27 +48,26 @@ Docs-only changes do not require a package version bump.
 
 Current result: `partial` for install and launch, `blocked` for remote-control acceptance.
 
-## Current root-cause signal
-
-Because neither `Info` nor A/B/C/D opened diagnostics, the failure is broader than a single Info-key mapping. The implementation now needs to prove real-TV key event delivery by adding fallback listener paths and richer diagnostics before treating focus as the only blocker.
-
-## Version 0.1.1 retest checklist
+## Version 0.1.2 retest checklist
 
 After extracting the runtime fix, committing, and pushing:
 
 1. Fully close and reopen TizenBrewNextGeneration.
-2. Confirm the module card shows version `0.1.1`.
+2. Confirm the module card shows version `0.1.2`.
 3. Launch Stremio Web through TizenBrew.
-4. On the home screen, press `Info`.
-5. If `Info` fails, press A/B/C/D and record whether diagnostics opens.
-6. Start a video.
-7. Test Play/Pause.
-8. Test seek forward and seek backward.
-9. Test directional navigation over player controls.
-10. Press Back and confirm it exits the player or returns to the previous Stremio screen.
-11. If login is needed again, verify arrows can reach login inputs, buttons, checkboxes, and Guest login.
-12. Record result as `pass`, `partial`, or `blocked`.
+4. Confirm the temporary boot badge appears, or use Web Inspector `getState()` if it does not.
+5. On the home screen, press `Info`.
+6. If `Info` fails, press A/B/C/D and record whether diagnostics opens.
+7. Navigate home cards and side nav.
+8. Open a detail page.
+9. Select a stream and start playback.
+10. Test Play/Pause.
+11. Test seek forward and seek backward.
+12. Test directional navigation over player controls.
+13. Press Back and confirm it exits the player or returns to the previous Stremio screen.
+14. If login is needed again, verify arrows can reach login inputs, buttons, checkboxes, and Guest login.
+15. Record result as `pass`, `partial`, or `blocked`.
 
 ## Acceptance note
 
-No feature is fully accepted until this real-device path is completed. A successful install or Stremio launch is not enough; diagnostics, navigation, player media keys, and Back/Exit behavior must work on the real TV.
+No feature is fully accepted until this real-device path is completed. A successful install or Stremio launch is not enough. Diagnostics, navigation, player media keys, and Back/Exit behavior must work on the real TV.

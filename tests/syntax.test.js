@@ -64,6 +64,8 @@ test("diagnostics can be opened by Info and color keys", () => {
   }
   assert.match(source, /toggleDiagnostics/);
   assert.match(source, /openDiagnostics/);
+  assert.match(source, /DIAGNOSTICS_REPEAT_WINDOW_MS/);
+  assert.match(source, /showBootBadge/);
 });
 
 test("runtime has direct video control fallbacks", () => {
@@ -73,6 +75,7 @@ test("runtime has direct video control fallbacks", () => {
   assert.match(source, /video\.pause\(\)/);
   assert.match(source, /video\.currentTime/);
   assert.match(source, /SEEK_STEP_SECONDS/);
+  assert.match(source, /fallbackClickPlayerControl/);
 });
 
 test("runtime has player/back fallback logic", () => {
@@ -87,6 +90,31 @@ test("runtime keeps editable-input safety", () => {
   assert.match(source, /function isEditableTarget/);
   assert.match(source, /!raw\.editable/);
   assert.match(source, /blurred-editable/);
+});
+
+test("runtime has a Stremio-specific selector contract", () => {
+  assert.match(source, /var stremioSelectorGroups = \{/);
+  for (const groupName of [
+    "authControls",
+    "homeNavigation",
+    "contentCards",
+    "detailsActions",
+    "streamRows",
+    "playerContainers",
+    "playerControls",
+    "playerBackControls",
+    "playerMenuControls",
+    "menuControls",
+    "focusGuards",
+    "excludedControls"
+  ]) {
+    assert.match(source, new RegExp(groupName));
+  }
+  assert.match(source, /selectorSource/);
+  assert.match(source, /isStremioSpecific/);
+  assert.match(source, /isPlayerControl/);
+  assert.match(source, /isAuthControl/);
+  assert.match(source, /isFocusGuard/);
 });
 
 test("auth and login controls are included as focus candidates", () => {

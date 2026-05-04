@@ -37,7 +37,7 @@ test("manifest defines a TizenBrew mods module for Stremio Web", () => {
 });
 
 test("manifest bumps the TV test-build version", () => {
-  assert.equal(manifest.version, "0.1.1");
+  assert.equal(manifest.version, "0.1.2");
 });
 
 test("manifest keys contain only optional media/color/info keys", () => {
@@ -65,7 +65,7 @@ test("manifest has zero runtime dependencies and required scripts", () => {
   assert.equal("dependencies" in manifest, false);
   assert.equal("devDependencies" in manifest, false);
   assert.equal(typeof manifest.scripts, "object");
-  assert.equal(manifest.scripts.test, "node tests/manifest.test.js && node tests/syntax.test.js");
+  assert.equal(manifest.scripts.test, "node tests/manifest.test.js && node tests/syntax.test.js && node tests/stremio-dom-samples.test.js");
   assert.equal(manifest.scripts["check:manifest"], "node tests/manifest.test.js");
-  assert.equal(manifest.scripts["check:syntax"], "node tests/syntax.test.js");
+  assert.equal(manifest.scripts["check:syntax"], "node tests/syntax.test.js && node tests/stremio-dom-samples.test.js");
 });
