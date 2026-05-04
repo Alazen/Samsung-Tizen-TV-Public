@@ -1,0 +1,90 @@
+[
+  {
+    "bytes": 56800,
+    "has_email": false,
+    "has_player_class": false,
+    "has_auth_copy": true,
+    "has_nav_menu": false,
+    "has_streams": true,
+    "source_file": "Pasted text (2).txt",
+    "sanitized_file": "docs/validation/stremio-dom-samples/login-signup-overlay.html",
+    "sanitized_bytes": 35211
+  },
+  {
+    "bytes": 55582,
+    "has_email": false,
+    "has_player_class": false,
+    "has_auth_copy": true,
+    "has_nav_menu": false,
+    "has_streams": true,
+    "source_file": "Pasted text (3).txt",
+    "sanitized_file": "docs/validation/stremio-dom-samples/login-form.html",
+    "sanitized_bytes": 34083
+  },
+  {
+    "bytes": 673658,
+    "has_email": false,
+    "has_player_class": true,
+    "has_auth_copy": false,
+    "has_nav_menu": false,
+    "has_streams": true,
+    "source_file": "Pasted text (4).txt",
+    "sanitized_file": "docs/validation/stremio-dom-samples/details-page-with-streams.html",
+    "sanitized_bytes": 204465
+  },
+  {
+    "bytes": 692836,
+    "has_email": false,
+    "has_player_class": true,
+    "has_auth_copy": false,
+    "has_nav_menu": false,
+    "has_streams": true,
+    "source_file": "Pasted text (5).txt",
+    "sanitized_file": "docs/validation/stremio-dom-samples/player-controls-visible.html",
+    "sanitized_bytes": 207950
+  },
+  {
+    "bytes": 692855,
+    "has_email": false,
+    "has_player_class": true,
+    "has_auth_copy": false,
+    "has_nav_menu": false,
+    "has_streams": true,
+    "source_file": "Pasted text (6).txt",
+    "sanitized_file": "docs/validation/stremio-dom-samples/player-controls-visible-variant.html",
+    "sanitized_bytes": 207986
+  },
+  {
+    "bytes": 702990,
+    "has_email": false,
+    "has_player_class": true,
+    "has_auth_copy": false,
+    "has_nav_menu": false,
+    "has_streams": true,
+    "source_file": "Pasted text (7).txt",
+    "sanitized_file": "docs/validation/stremio-dom-samples/player-controls-menu-open.html",
+    "sanitized_bytes": 217642
+  },
+  {
+    "bytes": 160722,
+    "has_email": true,
+    "has_player_class": false,
+    "has_auth_copy": false,
+    "has_nav_menu": true,
+    "has_streams": true,
+    "source_file": "Pasted text (8).txt",
+    "sanitized_file": "docs/validation/stremio-dom-samples/nav-menu-open-home.html",
+    "sanitized_bytes": 108060
+  },
+  {
+    "bytes": 195642,
+    "has_email": true,
+    "has_player_class": true,
+    "has_auth_copy": false,
+    "has_nav_menu": true,
+    "has_streams": true,
+    "source_file": "Pasted text (9).txt",
+    "sanitized_file": "docs/validation/stremio-dom-samples/home-after-login-extra.html",
+    "sanitized_bytes": 124255
+  }
+]
