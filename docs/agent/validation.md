@@ -15,6 +15,19 @@ If the local npm launcher is unavailable, use the direct Node equivalents:
 - `node tests/syntax.test.js`
 - `node tests/manifest.test.js`
 
+## TizenBrew TV test-build rule
+
+For any runtime change that should be tested through the TizenBrew GitHub module on a real TV:
+
+1. Bump `package.json` `version` before the TV retest commit.
+2. Keep the TizenBrew development module reference on the branch form:
+   `gh/Alazen/Samsung-Tizen-TV-Public@Stremio-WebApp`.
+3. Commit and push the runtime change and version bump to that branch.
+4. Reopen TizenBrewNextGeneration on the TV.
+5. Confirm the module card shows the new version before retesting.
+
+If the TV is configured with a pinned commit SHA, pushed branch updates will not be picked up automatically. Use pinned SHAs only for stable release candidates.
+
 ## Docs-only or harness-only edits
 
 Use static checks first:
