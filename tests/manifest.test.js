@@ -36,6 +36,10 @@ test("manifest defines a TizenBrew mods module for Stremio Web", () => {
   assert.equal(manifest.main, "src/main.js");
 });
 
+test("manifest bumps the TV test-build version", () => {
+  assert.equal(manifest.version, "0.1.1");
+});
+
 test("manifest keys contain only optional media/color/info keys", () => {
   assert.ok(Array.isArray(manifest.keys), "keys must be an array");
   assert.ok(manifest.keys.length > 0, "keys array must not be empty");
@@ -53,7 +57,7 @@ test("manifest keys contain only optional media/color/info keys", () => {
   }
 });
 
-test("manifest keeps serviceFile out for this skeleton", () => {
+test("manifest keeps serviceFile out for this module", () => {
   assert.equal("serviceFile" in manifest, false);
 });
 

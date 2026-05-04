@@ -2,22 +2,24 @@
   "use strict";
 
   var NAMESPACE = "__STREMIO_TIZENBREW_REMOTE__";
+  var RUNTIME_VERSION = "0.1.1";
   var RUNTIME_SOURCE_MARKER = "stremio-webapp-src-main-js-task4e-v1";
   var RUNTIME_INJECTION_MARKER = "stremio-webapp-runtime-injection-v1";
+  var FOCUS_ATTRIBUTE = "data-stremio-remote-focus";
+  var STYLE_ATTRIBUTE = "data-stremio-remote-style";
+  var DIAGNOSTICS_ATTRIBUTE = "data-stremio-remote-diagnostics-panel";
+  var DIAGNOSTICS_BODY_ATTRIBUTE = "data-stremio-remote-diagnostics-body";
+  var EXIT_MODAL_ATTRIBUTE = "data-stremio-remote-exit-modal";
+  var EXIT_BUTTON_ATTRIBUTE = "data-stremio-remote-exit-button";
+  var DUPLICATE_EVENT_WINDOW_MS = 220;
+  var FOCUS_CACHE_MS = 160;
+  var SEEK_STEP_SECONDS = 15;
+
   if (globalScope[NAMESPACE] && globalScope[NAMESPACE].initialized) {
     return;
   }
 
-  var mandatoryKeys = new Set([
-    "ArrowLeft",
-    "ArrowRight",
-    "ArrowUp",
-    "ArrowDown",
-    "Enter",
-    "Back"
-  ]);
-
-  var defaultOptionalKeys = [
+  var optionalKeys = [
     "MediaPlayPause",
     "MediaPlay",
     "MediaPause",
@@ -31,209 +33,244 @@
     "Info"
   ];
 
-  var diagnosticsToggleKeys = [
-    "Info",
-    "ColorF0Red",
-    "ColorF1Green",
-    "ColorF2Yellow",
-    "ColorF3Blue"
-  ];
+  var diagnosticsKeys = {
+    Info: true,
+    ColorF0Red: true,
+    ColorF1Green: true,
+    ColorF2Yellow: true,
+    ColorF3Blue: true
+  };
 
-  var genericRoleMap = [
-    { role: "app-navigation", selector: "nav a, header nav a, [class*='nav'] a, [class*='menu'] a" },
-    { role: "content-card", selector: "[class*='card'], [class*='poster'], [class*='tile'], [data-testid*='card']" },
-    { role: "dialog-action", selector: "[role='dialog'] button, [role='dialog'] a, [aria-modal='true'] button, [aria-modal='true'] a" },
-    { role: "player-control", selector: "[class*='player'] button, [class*='controls'] button, [class*='controls'] a" },
-    { role: "subtitles-button", selector: "[aria-label*='subtitle'], [aria-label*='caption'], [class*='subtitle'], [class*='caption']" },
-    { role: "seekbar-track", selector: "[role='slider'], [class*='seek']" }
-  ];
+  var keyCodeMap = {
+    13: "Enter",
+    19: "MediaPause",
+    27: "Back",
+    32: "Enter",
+    37: "ArrowLeft",
+    38: "ArrowUp",
+    39: "ArrowRight",
+    40: "ArrowDown",
+    403: "ColorF0Red",
+    404: "ColorF1Green",
+    405: "ColorF2Yellow",
+    406: "ColorF3Blue",
+    412: "MediaRewind",
+    413: "MediaStop",
+    415: "MediaPlay",
+    417: "MediaFastForward",
+    457: "Info",
+    10009: "Back",
+    10252: "MediaPlayPause"
+  };
 
-  var candidateCacheDurationMs = 200;
+  var keyAliasMap = {
+    Left: "ArrowLeft",
+    Right: "ArrowRight",
+    Up: "ArrowUp",
+    Down: "ArrowDown",
+    Return: "Back",
+    Escape: "Back",
+    Backspace: "Back",
+    XF86Back: "Back",
+    Play: "MediaPlay",
+    Pause: "MediaPause",
+    MediaPlayPause: "MediaPlayPause",
+    MediaPlay: "MediaPlay",
+    MediaPause: "MediaPause",
+    MediaStop: "MediaStop",
+    MediaFastForward: "MediaFastForward",
+    MediaRewind: "MediaRewind",
+    FastForward: "MediaFastForward",
+    Rewind: "MediaRewind",
+    Red: "ColorF0Red",
+    Green: "ColorF1Green",
+    Yellow: "ColorF2Yellow",
+    Blue: "ColorF3Blue",
+    ColorF0Red: "ColorF0Red",
+    ColorF1Green: "ColorF1Green",
+    ColorF2Yellow: "ColorF2Yellow",
+    ColorF3Blue: "ColorF3Blue"
+  };
 
-  var defaultCss = [
-    ":root { --stremio-remote-focus-outline: #20c997; }",
-    "[data-stremio-remote-focus='true'] {",
-    "  outline: 3px solid var(--stremio-remote-focus-outline);",
-    "  outline-offset: 2px;",
-    "}",
-    "[data-stremio-remote-diagnostics-panel='1'] {",
-    "  position: fixed;",
-    "  top: 16px;",
-    "  right: 16px;",
-    "  z-index: 2147483647;",
-    "  width: min(420px, calc(100vw - 32px));",
-    "  max-height: calc(100vh - 32px);",
-    "  overflow: auto;",
-    "  padding: 12px 14px;",
-    "  border: 1px solid rgba(32, 201, 151, 0.45);",
-    "  border-radius: 10px;",
-    "  background: rgba(6, 12, 18, 0.92);",
-    "  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);",
-    "  color: #f3fff9;",
-    "  font: 12px/1.45 Consolas, 'Courier New', monospace;",
-    "  white-space: pre-wrap;",
-    "  display: none;",
-    "}",
-    "[data-stremio-remote-diagnostics-panel='1'][data-open='true'] {",
-    "  display: block;",
-    "}",
-    "[data-stremio-remote-diagnostics-body='1'] {",
-    "  margin: 0;",
-    "}",
-    "[data-stremio-remote-exit-modal='1'] {",
-    "  position: fixed;",
-    "  inset: 0;",
-    "  z-index: 2147483646;",
-    "  display: none;",
-    "  align-items: center;",
-    "  justify-content: center;",
-    "  padding: 24px;",
-    "  background: rgba(3, 8, 14, 0.36);",
-    "}",
-    "[data-stremio-remote-exit-modal='1'][data-open='true'] {",
-    "  display: flex;",
-    "}",
-    "[data-stremio-remote-exit-dialog='1'] {",
-    "  width: min(380px, calc(100vw - 48px));",
-    "  padding: 20px;",
-    "  border: 1px solid rgba(255, 255, 255, 0.18);",
-    "  border-radius: 14px;",
-    "  background: rgba(7, 15, 24, 0.96);",
-    "  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.42);",
-    "  color: #f4fff9;",
-    "  font: 16px/1.4 system-ui, sans-serif;",
-    "}",
-    "[data-stremio-remote-exit-actions='1'] {",
-    "  display: flex;",
-    "  gap: 12px;",
-    "  margin-top: 16px;",
-    "}",
-    "[data-stremio-remote-exit-button='1'] {",
-    "  min-width: 136px;",
-    "  padding: 10px 14px;",
-    "  border: 1px solid rgba(255, 255, 255, 0.2);",
-    "  border-radius: 10px;",
-    "  background: rgba(255, 255, 255, 0.06);",
-    "  color: inherit;",
-    "  font: inherit;",
-    "}"
-  ].join("\n");
+  var candidateSelectors = [
+    "button",
+    "a[href]",
+    "input",
+    "textarea",
+    "select",
+    "label",
+    "summary",
+    "[role='button']",
+    "[role='link']",
+    "[role='menuitem']",
+    "[role='checkbox']",
+    "[role='tab']",
+    "[tabindex]",
+    "[onclick]",
+    "[data-testid]",
+    "[class*='button']",
+    "[class*='Button']",
+    "[class*='btn']",
+    "[class*='card']",
+    "[class*='Card']",
+    "[class*='poster']",
+    "[class*='Poster']",
+    "[class*='tile']",
+    "[class*='Tile']",
+    "[class*='nav']",
+    "[class*='Nav']",
+    "[class*='menu']",
+    "[class*='Menu']",
+    "[class*='control']",
+    "[class*='Control']",
+    "[class*='login']",
+    "[class*='Login']",
+    "[class*='signup']",
+    "[class*='Signup']",
+    "[class*='auth']",
+    "[class*='Auth']"
+  ].join(",");
 
-  function createInitialState() {
-    return {
-      initialized: false,
-      initTime: null,
-      registeredKeys: [],
-      failedKeys: [],
-      apiAvailability: {},
-      lastKey: null,
-      lastConsumedAction: null,
-      diagnosticsOpen: false,
-      exitModalOpen: false,
-      styleInjected: false,
-      keyListenerAttached: false,
-      diagnosticsPanelCreated: false,
-      exitModalCreated: false,
-      domReadyHookAttached: false,
-      currentFocusRole: null,
-      candidateCount: 0,
-      lastExitAttempt: null,
-      lastExitResult: null,
-      lastBackResolution: null,
-      initialPath: "",
-      initialHistoryLength: null
-    };
-  }
+  var state = {
+    initialized: false,
+    version: RUNTIME_VERSION,
+    sourceMarker: RUNTIME_SOURCE_MARKER,
+    injectionMarker: RUNTIME_INJECTION_MARKER,
+    initTime: null,
+    registeredKeys: [],
+    failedKeys: [],
+    listenerPaths: [],
+    apiAvailability: {},
+    diagnosticsOpen: false,
+    diagnosticsPanelCreated: false,
+    styleInjected: false,
+    exitModalCreated: false,
+    exitModalOpen: false,
+    keyListenerAttached: false,
+    domReadyHookAttached: false,
+    currentFocusRole: null,
+    currentFocusText: "",
+    candidateCount: 0,
+    lastRawEvent: null,
+    lastKey: null,
+    lastAction: null,
+    lastConsumedAction: null,
+    lastBackResolution: null,
+    lastExitAttempt: null,
+    lastExitResult: null,
+    lastVideoState: null,
+    lastPlayerActionResult: null,
+    initialPath: "",
+    initialHistoryLength: null
+  };
 
-  var runtimeApi = globalScope[NAMESPACE] || {};
-  var state = createInitialState();
   var currentFocusedElement = null;
   var previousFocusBeforeExitModal = null;
   var candidateCache = {
     timestamp: 0,
     items: []
   };
-
-  function toDataKey(attributeName) {
-    return attributeName.replace(/^data-/, "").replace(/-([a-z])/g, function (_match, letter) {
-      return letter.toUpperCase();
-    });
-  }
-
-  function setDataAttribute(element, attributeName, value) {
-    if (!element) {
-      return;
-    }
-
-    if (typeof element.setAttribute === "function") {
-      element.setAttribute(attributeName, String(value));
-      return;
-    }
-
-    element.dataset = element.dataset || {};
-    element.dataset[toDataKey(attributeName)] = String(value);
-  }
-
-  function clearDataAttribute(element, attributeName) {
-    if (!element) {
-      return;
-    }
-
-    if (typeof element.removeAttribute === "function") {
-      element.removeAttribute(attributeName);
-      return;
-    }
-
-    if (element.dataset) {
-      delete element.dataset[toDataKey(attributeName)];
-    }
-  }
-
-  function setAttributeIfPossible(element, attributeName, value) {
-    if (!element) {
-      return;
-    }
-
-    if (typeof element.setAttribute === "function") {
-      element.setAttribute(attributeName, String(value));
-      return;
-    }
-
-    element[attributeName] = String(value);
-  }
+  var lastHandled = {
+    signature: "",
+    timestamp: 0
+  };
 
   function getDocument() {
     return globalScope && globalScope.document ? globalScope.document : null;
-  }
-
-  function getLocationPath() {
-    if (!globalScope || !globalScope.location) {
-      return "";
-    }
-
-    return globalScope.location.pathname || globalScope.location.href || "";
   }
 
   function now() {
     return typeof Date.now === "function" ? Date.now() : new Date().getTime();
   }
 
+  function toLower(value) {
+    return typeof value === "string" ? value.toLowerCase() : "";
+  }
+
+  function trimText(value) {
+    if (typeof value !== "string") {
+      return "";
+    }
+    return value.replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "").slice(0, 80);
+  }
+
+  function getLocationPath() {
+    if (!globalScope || !globalScope.location) {
+      return "";
+    }
+    return globalScope.location.pathname || globalScope.location.href || "";
+  }
+
+  function hasOwn(object, key) {
+    return Object.prototype.hasOwnProperty.call(object, key);
+  }
+
+  function setAttribute(element, name, value) {
+    if (!element) {
+      return;
+    }
+    if (typeof element.setAttribute === "function") {
+      element.setAttribute(name, String(value));
+      return;
+    }
+    element[name] = String(value);
+  }
+
+  function removeAttribute(element, name) {
+    if (!element) {
+      return;
+    }
+    if (typeof element.removeAttribute === "function") {
+      element.removeAttribute(name);
+    }
+  }
+
+  function getAttribute(element, name) {
+    if (!element || typeof element.getAttribute !== "function") {
+      return null;
+    }
+    return element.getAttribute(name);
+  }
+
+  function elementMatches(element, selector) {
+    if (!element || typeof selector !== "string") {
+      return false;
+    }
+    if (typeof element.matches === "function") {
+      try {
+        return element.matches(selector);
+      } catch (_error) {
+        return false;
+      }
+    }
+    return false;
+  }
+
+  function isInsideModuleUi(element) {
+    var current = element;
+    while (current) {
+      if (getAttribute(current, DIAGNOSTICS_ATTRIBUTE) === "1" ||
+          getAttribute(current, DIAGNOSTICS_BODY_ATTRIBUTE) === "1" ||
+          getAttribute(current, EXIT_MODAL_ATTRIBUTE) === "1" ||
+          getAttribute(current, EXIT_BUTTON_ATTRIBUTE) === "1") {
+        return true;
+      }
+      current = current.parentNode || null;
+    }
+    return false;
+  }
+
   function collectApiAvailability() {
     var documentObject = getDocument();
     var tizenObject = globalScope && globalScope.tizen;
     var inputDevice = tizenObject && (tizenObject.tvinputdevice || tizenObject.inputdevice);
-
     return {
       document: Boolean(documentObject),
       documentHead: Boolean(documentObject && documentObject.head),
       documentBody: Boolean(documentObject && documentObject.body),
       tizen: Boolean(tizenObject),
       tvInputDevice: Boolean(inputDevice && typeof inputDevice.registerKey === "function"),
-      application: Boolean(
-        tizenObject &&
-        tizenObject.application &&
-        typeof tizenObject.application.getCurrentApplication === "function"
-      ),
+      application: Boolean(tizenObject && tizenObject.application && typeof tizenObject.application.getCurrentApplication === "function"),
       mutationObserver: typeof globalScope.MutationObserver === "function",
       requestAnimationFrame: typeof globalScope.requestAnimationFrame === "function"
     };
@@ -244,188 +281,17 @@
     return state.apiAvailability;
   }
 
-  function copyFailedKeys(failedKeys) {
-    var copied = [];
-    var i;
-
-    for (i = 0; i < failedKeys.length; i += 1) {
-      copied.push({
-        keyName: failedKeys[i].keyName,
-        message: failedKeys[i].message
-      });
-    }
-
-    return copied;
-  }
-
-  function copyExitResult(result) {
-    if (!result) {
-      return null;
-    }
-
-    return {
-      ok: Boolean(result.ok),
-      message: typeof result.message === "string" ? result.message : ""
-    };
-  }
-
-  function collectRuntimeMarkers() {
-    var documentObject = getDocument();
-    var namespaceObject = globalScope && globalScope[NAMESPACE];
-    var styleMarkerPresent = false;
-
-    if (documentObject && typeof documentObject.querySelector === "function") {
-      styleMarkerPresent = Boolean(
-        documentObject.querySelector("style[data-stremio-remote-style='1']")
-      );
-    }
-
-    return {
-      namespacePresent: Boolean(namespaceObject),
-      initializedNamespace: Boolean(namespaceObject && namespaceObject.initialized),
-      styleMarkerPresent: styleMarkerPresent,
-      diagnosticsPanelMarkerPresent: Boolean(findDiagnosticsPanel()),
-      exitModalMarkerPresent: Boolean(findExitModal()),
-      styleMarkerInjected: state.styleInjected,
-      diagnosticsPanelCreated: state.diagnosticsPanelCreated,
-      exitModalCreated: state.exitModalCreated
-    };
-  }
-
-  function getState() {
-    var runtimeMarkers;
-
-    refreshApiAvailability();
-    runtimeMarkers = collectRuntimeMarkers();
-
-    return {
-      initialized: state.initialized,
-      initTime: state.initTime,
-      sourceMarker: RUNTIME_SOURCE_MARKER,
-      injectionMarker: RUNTIME_INJECTION_MARKER,
-      runtimeMarkers: {
-        namespacePresent: runtimeMarkers.namespacePresent,
-        initializedNamespace: runtimeMarkers.initializedNamespace,
-        styleMarkerPresent: runtimeMarkers.styleMarkerPresent,
-        diagnosticsPanelMarkerPresent: runtimeMarkers.diagnosticsPanelMarkerPresent,
-        exitModalMarkerPresent: runtimeMarkers.exitModalMarkerPresent,
-        styleMarkerInjected: runtimeMarkers.styleMarkerInjected,
-        diagnosticsPanelCreated: runtimeMarkers.diagnosticsPanelCreated,
-        exitModalCreated: runtimeMarkers.exitModalCreated
-      },
-      registeredKeys: state.registeredKeys.slice(),
-      failedKeys: copyFailedKeys(state.failedKeys),
-      apiAvailability: {
-        document: state.apiAvailability.document,
-        documentHead: state.apiAvailability.documentHead,
-        documentBody: state.apiAvailability.documentBody,
-        tizen: state.apiAvailability.tizen,
-        tvInputDevice: state.apiAvailability.tvInputDevice,
-        application: state.apiAvailability.application,
-        mutationObserver: state.apiAvailability.mutationObserver,
-        requestAnimationFrame: state.apiAvailability.requestAnimationFrame
-      },
-      lastKey: state.lastKey ? {
-        key: state.lastKey.key,
-        code: state.lastKey.code,
-        keyCode: state.lastKey.keyCode,
-        editable: state.lastKey.editable
-      } : null,
-      lastConsumedAction: state.lastConsumedAction,
-      diagnosticsOpen: state.diagnosticsOpen,
-      exitModalOpen: state.exitModalOpen,
-      currentFocusRole: state.currentFocusRole,
-      candidateCount: state.candidateCount,
-      lastExitAttempt: state.lastExitAttempt,
-      lastExitResult: copyExitResult(state.lastExitResult),
-      lastBackResolution: state.lastBackResolution
-    };
-  }
-
   function getInputDeviceApi() {
     var tizenObject = globalScope && globalScope.tizen;
-    var inputdevice;
-
+    var inputDevice;
     if (!tizenObject) {
       return null;
     }
-
-    inputdevice = tizenObject.tvinputdevice || tizenObject.inputdevice;
-    if (!inputdevice || typeof inputdevice.registerKey !== "function") {
+    inputDevice = tizenObject.tvinputdevice || tizenObject.inputdevice;
+    if (!inputDevice || typeof inputDevice.registerKey !== "function") {
       return null;
     }
-
-    return inputdevice;
-  }
-
-  function findDiagnosticsPanel() {
-    var documentObject = getDocument();
-    if (!documentObject || typeof documentObject.querySelector !== "function") {
-      return null;
-    }
-
-    return documentObject.querySelector("[data-stremio-remote-diagnostics-panel='1']");
-  }
-
-  function findDiagnosticsBody(panel) {
-    if (!panel || typeof panel.querySelector !== "function") {
-      return null;
-    }
-
-    return panel.querySelector("[data-stremio-remote-diagnostics-body='1']");
-  }
-
-  function findExitModal() {
-    var documentObject = getDocument();
-    if (!documentObject || typeof documentObject.querySelector !== "function") {
-      return null;
-    }
-
-    return documentObject.querySelector("[data-stremio-remote-exit-modal='1']");
-  }
-
-  function findExitDialog(modal) {
-    if (!modal || typeof modal.querySelector !== "function") {
-      return null;
-    }
-
-    return modal.querySelector("[data-stremio-remote-exit-dialog='1']");
-  }
-
-  function invalidateCandidateCache() {
-    candidateCache.items = [];
-    candidateCache.timestamp = 0;
-  }
-
-  function injectStylesIfPossible(cssText) {
-    var documentObject = getDocument();
-    var existingStyle;
-    var style;
-
-    if (!documentObject || !documentObject.head) {
-      refreshApiAvailability();
-      return false;
-    }
-
-    existingStyle = typeof documentObject.querySelector === "function"
-      ? documentObject.querySelector("style[data-stremio-remote-style='1']")
-      : null;
-
-    if (existingStyle) {
-      state.styleInjected = true;
-      refreshApiAvailability();
-      return true;
-    }
-
-    style = documentObject.createElement("style");
-    style.type = "text/css";
-    setDataAttribute(style, "data-stremio-remote-style", "1");
-    style.appendChild(documentObject.createTextNode(cssText || defaultCss));
-    documentObject.head.appendChild(style);
-
-    state.styleInjected = true;
-    refreshApiAvailability();
-    return true;
+    return inputDevice;
   }
 
   function recordFailedKey(keyName, error) {
@@ -435,1335 +301,1099 @@
     });
   }
 
-  function registerOptionalKeys(requestedKeys) {
-    var inputdevice = getInputDeviceApi();
-    var keys = Array.isArray(requestedKeys) ? requestedKeys : defaultOptionalKeys;
+  function registerOptionalKeys() {
+    var inputDevice = getInputDeviceApi();
     var i;
     var keyName;
-
     state.registeredKeys = [];
     state.failedKeys = [];
     refreshApiAvailability();
-
-    if (!inputdevice) {
+    if (!inputDevice) {
       return [];
     }
-
-    for (i = 0; i < keys.length; i += 1) {
-      keyName = keys[i];
-      if (mandatoryKeys.has(keyName)) {
-        continue;
-      }
-
+    for (i = 0; i < optionalKeys.length; i += 1) {
+      keyName = optionalKeys[i];
       try {
-        inputdevice.registerKey(keyName);
+        inputDevice.registerKey(keyName);
         state.registeredKeys.push(keyName);
       } catch (error) {
         recordFailedKey(keyName, error);
       }
     }
-
     return state.registeredKeys.slice();
   }
 
-  function isEditableTarget(target) {
-    var tagName;
-    var role;
-
-    if (!target) {
+  function injectStyles() {
+    var documentObject = getDocument();
+    var style;
+    if (!documentObject || !documentObject.head || typeof documentObject.createElement !== "function") {
+      refreshApiAvailability();
       return false;
     }
-
-    if (target.isContentEditable === true || target.contentEditable === "true") {
+    if (documentObject.querySelector && documentObject.querySelector("style[" + STYLE_ATTRIBUTE + "='1']")) {
+      state.styleInjected = true;
       return true;
     }
-
-    tagName = typeof target.tagName === "string" ? target.tagName.toLowerCase() : "";
-    if (tagName === "input" || tagName === "textarea" || tagName === "select") {
-      return true;
-    }
-
-    if (typeof target.getAttribute === "function") {
-      role = target.getAttribute("role");
-      if (role === "textbox") {
-        return true;
-      }
-    }
-
-    return false;
+    style = documentObject.createElement("style");
+    style.type = "text/css";
+    setAttribute(style, STYLE_ATTRIBUTE, "1");
+    style.appendChild(documentObject.createTextNode([
+      ":root { --stremio-remote-focus-outline: #20c997; }",
+      "[" + FOCUS_ATTRIBUTE + "='true'] { outline: 3px solid var(--stremio-remote-focus-outline); outline-offset: 3px; border-radius: 6px; }",
+      "[" + DIAGNOSTICS_ATTRIBUTE + "='1'] { position: fixed; top: 14px; right: 14px; z-index: 2147483647; width: min(520px, calc(100vw - 28px)); max-height: calc(100vh - 28px); overflow: auto; padding: 12px 14px; border: 1px solid rgba(32,201,151,.6); border-radius: 10px; background: rgba(5,10,18,.94); color: #f4fff9; font: 12px/1.45 Consolas, 'Courier New', monospace; white-space: pre-wrap; display: none; box-shadow: 0 12px 32px rgba(0,0,0,.4); }",
+      "[" + DIAGNOSTICS_ATTRIBUTE + "='1'][data-open='true'] { display: block; }",
+      "[" + DIAGNOSTICS_BODY_ATTRIBUTE + "='1'] { margin: 0; }",
+      "[" + EXIT_MODAL_ATTRIBUTE + "='1'] { position: fixed; inset: 0; z-index: 2147483646; display: none; align-items: center; justify-content: center; background: rgba(2,7,12,.38); }",
+      "[" + EXIT_MODAL_ATTRIBUTE + "='1'][data-open='true'] { display: flex; }",
+      "[data-stremio-remote-exit-dialog='1'] { width: min(420px, calc(100vw - 48px)); padding: 20px; border-radius: 14px; background: rgba(7,15,24,.96); color: #f4fff9; font: 16px/1.4 system-ui, sans-serif; }",
+      "[data-stremio-remote-exit-actions='1'] { display: flex; gap: 12px; margin-top: 16px; }",
+      "[" + EXIT_BUTTON_ATTRIBUTE + "='1'] { min-width: 136px; padding: 10px 14px; border: 1px solid rgba(255,255,255,.2); border-radius: 10px; background: rgba(255,255,255,.08); color: inherit; font: inherit; }"
+    ].join("\n")));
+    documentObject.head.appendChild(style);
+    state.styleInjected = true;
+    refreshApiAvailability();
+    return true;
   }
 
-  function normalizeKeyEvent(event) {
-    return {
-      key: event && typeof event.key === "string" ? event.key : "",
-      code: event && typeof event.code === "string" ? event.code : "",
-      keyCode: event && typeof event.keyCode === "number" ? event.keyCode : null,
-      editable: isEditableTarget(event && event.target ? event.target : null)
-    };
-  }
-
-  function isDiagnosticsToggleKey(keyName) {
-    var i;
-
-    for (i = 0; i < diagnosticsToggleKeys.length; i += 1) {
-      if (diagnosticsToggleKeys[i] === keyName) {
-        return true;
-      }
+  function findDiagnosticsPanel() {
+    var documentObject = getDocument();
+    if (!documentObject || typeof documentObject.querySelector !== "function") {
+      return null;
     }
-
-    return false;
+    return documentObject.querySelector("[" + DIAGNOSTICS_ATTRIBUTE + "='1']");
   }
 
   function ensureDiagnosticsPanel() {
     var documentObject = getDocument();
-    var existingPanel;
     var panel;
-    var panelBody;
-
+    var body;
     if (!documentObject || !documentObject.body || typeof documentObject.createElement !== "function") {
       refreshApiAvailability();
       return null;
     }
-
-    existingPanel = findDiagnosticsPanel();
-    if (existingPanel) {
+    panel = findDiagnosticsPanel();
+    if (panel) {
       state.diagnosticsPanelCreated = true;
-      refreshApiAvailability();
-      return existingPanel;
+      return panel;
     }
-
     panel = documentObject.createElement("aside");
-    setDataAttribute(panel, "data-stremio-remote-diagnostics-panel", "1");
-    setDataAttribute(panel, "data-open", "false");
-    setAttributeIfPossible(panel, "aria-hidden", "true");
-
-    panelBody = documentObject.createElement("pre");
-    setDataAttribute(panelBody, "data-stremio-remote-diagnostics-body", "1");
-    panel.appendChild(panelBody);
+    setAttribute(panel, DIAGNOSTICS_ATTRIBUTE, "1");
+    setAttribute(panel, "data-open", "false");
+    setAttribute(panel, "aria-hidden", "true");
+    body = documentObject.createElement("pre");
+    setAttribute(body, DIAGNOSTICS_BODY_ATTRIBUTE, "1");
+    panel.appendChild(body);
     documentObject.body.appendChild(panel);
-
     state.diagnosticsPanelCreated = true;
     refreshApiAvailability();
     return panel;
   }
 
-  function ensureExitModal() {
-    var documentObject = getDocument();
-    var existingModal;
-    var modal;
-    var dialog;
-    var title;
-    var description;
-    var actions;
-    var keepWatchingButton;
-    var endAppButton;
-
-    if (!documentObject || !documentObject.body || typeof documentObject.createElement !== "function") {
-      refreshApiAvailability();
+  function findDiagnosticsBody(panel) {
+    if (!panel || typeof panel.querySelector !== "function") {
       return null;
     }
+    return panel.querySelector("[" + DIAGNOSTICS_BODY_ATTRIBUTE + "='1']");
+  }
 
-    existingModal = findExitModal();
-    if (existingModal) {
-      state.exitModalCreated = true;
-      refreshApiAvailability();
-      return existingModal;
+  function findExitModal() {
+    var documentObject = getDocument();
+    if (!documentObject || typeof documentObject.querySelector !== "function") {
+      return null;
     }
+    return documentObject.querySelector("[" + EXIT_MODAL_ATTRIBUTE + "='1']");
+  }
 
+  function ensureExitModal() {
+    var documentObject = getDocument();
+    var modal;
+    var dialog;
+    var text;
+    var actions;
+    var keepButton;
+    var endButton;
+    if (!documentObject || !documentObject.body || typeof documentObject.createElement !== "function") {
+      return null;
+    }
+    modal = findExitModal();
+    if (modal) {
+      state.exitModalCreated = true;
+      return modal;
+    }
     modal = documentObject.createElement("div");
-    setDataAttribute(modal, "data-stremio-remote-exit-modal", "1");
-    setDataAttribute(modal, "data-open", "false");
-    setAttributeIfPossible(modal, "aria-hidden", "true");
-
+    setAttribute(modal, EXIT_MODAL_ATTRIBUTE, "1");
+    setAttribute(modal, "data-open", "false");
+    setAttribute(modal, "aria-hidden", "true");
     dialog = documentObject.createElement("div");
-    setDataAttribute(dialog, "data-stremio-remote-exit-dialog", "1");
-    setAttributeIfPossible(dialog, "role", "dialog");
-    setAttributeIfPossible(dialog, "aria-modal", "true");
-
-    title = documentObject.createElement("strong");
-    title.textContent = "Leave Stremio?";
-
-    description = documentObject.createElement("p");
-    description.textContent = "You can keep watching or end the app.";
-
+    setAttribute(dialog, "data-stremio-remote-exit-dialog", "1");
+    setAttribute(dialog, "role", "dialog");
+    setAttribute(dialog, "aria-modal", "true");
+    text = documentObject.createElement("div");
+    text.textContent = "Leave Stremio?";
     actions = documentObject.createElement("div");
-    setDataAttribute(actions, "data-stremio-remote-exit-actions", "1");
-
-    keepWatchingButton = documentObject.createElement("button");
-    keepWatchingButton.textContent = "Keep watching";
-    setDataAttribute(keepWatchingButton, "data-stremio-remote-exit-button", "1");
-    setDataAttribute(keepWatchingButton, "data-stremio-remote-action", "keep-watching");
-    keepWatchingButton.onclick = function onKeepWatchingClick() {
+    setAttribute(actions, "data-stremio-remote-exit-actions", "1");
+    keepButton = documentObject.createElement("button");
+    keepButton.textContent = "Keep watching";
+    setAttribute(keepButton, EXIT_BUTTON_ATTRIBUTE, "1");
+    keepButton.onclick = function onKeepWatching() {
       closeExitModal("keep-watching");
     };
-
-    endAppButton = documentObject.createElement("button");
-    endAppButton.textContent = "End the app";
-    setDataAttribute(endAppButton, "data-stremio-remote-exit-button", "1");
-    setDataAttribute(endAppButton, "data-stremio-remote-action", "end-app");
-    endAppButton.onclick = function onEndAppClick() {
-      state.lastConsumedAction = "exit-modal:end-app";
+    endButton = documentObject.createElement("button");
+    endButton.textContent = "End the app";
+    setAttribute(endButton, EXIT_BUTTON_ATTRIBUTE, "1");
+    endButton.onclick = function onEndApp() {
       attemptAppExit();
-      renderDiagnostics();
     };
-
-    actions.appendChild(keepWatchingButton);
-    actions.appendChild(endAppButton);
-    dialog.appendChild(title);
-    dialog.appendChild(description);
+    actions.appendChild(keepButton);
+    actions.appendChild(endButton);
+    dialog.appendChild(text);
     dialog.appendChild(actions);
     modal.appendChild(dialog);
     documentObject.body.appendChild(modal);
-
     state.exitModalCreated = true;
-    refreshApiAvailability();
     return modal;
   }
 
-  function formatKeyList(list) {
-    return list.length ? list.join(", ") : "(none)";
+  function findVisibleVideos() {
+    var documentObject = getDocument();
+    var videos;
+    var result = [];
+    var i;
+    if (!documentObject || typeof documentObject.querySelectorAll !== "function") {
+      return result;
+    }
+    videos = documentObject.querySelectorAll("video");
+    for (i = 0; i < videos.length; i += 1) {
+      if (isVisible(videos[i])) {
+        result.push(videos[i]);
+      }
+    }
+    return result;
   }
 
-  function formatFailedKeys(failedKeys) {
-    var formatted;
+  function getPrimaryVideo() {
+    var videos = findVisibleVideos();
+    var best = null;
+    var bestArea = -1;
     var i;
-
-    if (!failedKeys.length) {
-      return "(none)";
+    var rect;
+    var area;
+    for (i = 0; i < videos.length; i += 1) {
+      rect = getRect(videos[i]);
+      area = rect.width * rect.height;
+      if (!best || area > bestArea) {
+        best = videos[i];
+        bestArea = area;
+      }
     }
+    return best;
+  }
 
-    formatted = [];
-    for (i = 0; i < failedKeys.length; i += 1) {
-      formatted.push(failedKeys[i].keyName + ": " + failedKeys[i].message);
+  function copyVideoState(video) {
+    if (!video) {
+      return {
+        found: false
+      };
     }
+    return {
+      found: true,
+      paused: Boolean(video.paused),
+      ended: Boolean(video.ended),
+      currentTime: typeof video.currentTime === "number" ? video.currentTime : null,
+      duration: typeof video.duration === "number" && isFinite(video.duration) ? video.duration : null,
+      muted: Boolean(video.muted)
+    };
+  }
 
-    return formatted.join(", ");
+  function refreshVideoState() {
+    state.lastVideoState = copyVideoState(getPrimaryVideo());
+    return state.lastVideoState;
+  }
+
+  function formatVideoState(videoState) {
+    if (!videoState || !videoState.found) {
+      return "found=false";
+    }
+    return "found=true, paused=" + String(videoState.paused) +
+      ", time=" + String(videoState.currentTime) +
+      ", duration=" + String(videoState.duration);
   }
 
   function buildDiagnosticsText() {
-    var snapshot = getState();
-    var runtimeMarkers = snapshot.runtimeMarkers;
-    var lastKey = snapshot.lastKey
-      ? snapshot.lastKey.key + (snapshot.lastKey.code ? " (" + snapshot.lastKey.code + ")" : "")
-      : "(none)";
-    var lastExitAttempt = snapshot.lastExitAttempt !== null
-      ? String(snapshot.lastExitAttempt)
-      : "(none)";
-    var exitResult = snapshot.lastExitResult
-      ? (snapshot.lastExitResult.ok ? "ok: " : "failed: ") + snapshot.lastExitResult.message
-      : "(none)";
-
+    var api = refreshApiAvailability();
+    var videoState = refreshVideoState();
+    var raw = state.lastRawEvent || {};
     return [
       "Stremio Web TV Remote Diagnostics",
-      "Source marker: " + snapshot.sourceMarker,
-      "Injection marker: " + snapshot.injectionMarker,
-      "Injection evidence: " +
-        "namespace=" + String(runtimeMarkers.namespacePresent) +
-        ", initialized=" + String(runtimeMarkers.initializedNamespace) +
-        ", style-marker=" + String(runtimeMarkers.styleMarkerPresent) +
-        ", diagnostics-marker=" + String(runtimeMarkers.diagnosticsPanelMarkerPresent) +
-        ", exit-marker=" + String(runtimeMarkers.exitModalMarkerPresent),
-      "Init time: " + (snapshot.initTime !== null ? String(snapshot.initTime) : "(not initialized)"),
-      "Path: " + (getLocationPath() || "(unavailable)"),
-      "Last key: " + lastKey,
-      "Last action: " + (snapshot.lastConsumedAction || "(none)"),
-      "Diagnostics open: " + String(snapshot.diagnosticsOpen),
-      "Exit modal open: " + String(snapshot.exitModalOpen),
-      "Current focus role: " + (snapshot.currentFocusRole || "(none)"),
-      "Candidate count: " + String(snapshot.candidateCount),
-      "Last Back resolution: " + (snapshot.lastBackResolution || "(none)"),
-      "Last exit attempt: " + lastExitAttempt,
-      "Last exit result: " + exitResult,
-      "Optional key registration: " +
-        "registered=" + String(snapshot.registeredKeys.length) +
-        ", failed=" + String(snapshot.failedKeys.length) +
-        ", apiAvailable=" + String(snapshot.apiAvailability.tvInputDevice),
-      "Registered keys: " + formatKeyList(snapshot.registeredKeys),
-      "Failed keys: " + formatFailedKeys(snapshot.failedKeys),
-      "APIs: " +
-        "document=" + String(snapshot.apiAvailability.document) +
-        ", head=" + String(snapshot.apiAvailability.documentHead) +
-        ", body=" + String(snapshot.apiAvailability.documentBody) +
-        ", tizen=" + String(snapshot.apiAvailability.tizen) +
-        ", tvinputdevice=" + String(snapshot.apiAvailability.tvInputDevice) +
-        ", application=" + String(snapshot.apiAvailability.application) +
-        ", MutationObserver=" + String(snapshot.apiAvailability.mutationObserver) +
-        ", requestAnimationFrame=" + String(snapshot.apiAvailability.requestAnimationFrame)
+      "Version: " + RUNTIME_VERSION,
+      "Source marker: " + RUNTIME_SOURCE_MARKER,
+      "Injection marker: " + RUNTIME_INJECTION_MARKER,
+      "Path: " + getLocationPath(),
+      "Initialized: " + String(state.initialized),
+      "Init time: " + String(state.initTime),
+      "Diagnostics open: " + String(state.diagnosticsOpen),
+      "Candidate count: " + String(state.candidateCount),
+      "Current focus role: " + (state.currentFocusRole || "(none)"),
+      "Current focus text: " + (state.currentFocusText || "(none)"),
+      "Last event path: " + (raw.path || "(none)"),
+      "Last event type: " + (raw.type || "(none)"),
+      "Last raw key: " + (raw.key || "(none)"),
+      "Last raw code: " + (raw.code || "(none)"),
+      "Last keyCode: " + String(raw.keyCode),
+      "Last which: " + String(raw.which),
+      "Last keyName: " + (raw.keyName || "(none)"),
+      "Last normalized key: " + (state.lastKey ? state.lastKey.normalizedKey : "(none)"),
+      "Last action: " + (state.lastAction || "(none)"),
+      "Last consumed action: " + (state.lastConsumedAction || "(none)"),
+      "Last Back resolution: " + (state.lastBackResolution || "(none)"),
+      "Last player result: " + (state.lastPlayerActionResult || "(none)"),
+      "Video: " + formatVideoState(videoState),
+      "Registered keys: " + (state.registeredKeys.length ? state.registeredKeys.join(", ") : "(none)"),
+      "Failed keys: " + (state.failedKeys.length ? state.failedKeys.map(function mapFailed(item) { return item.keyName + ": " + item.message; }).join(", ") : "(none)"),
+      "Listeners: " + (state.listenerPaths.length ? state.listenerPaths.join(", ") : "(none)"),
+      "APIs: document=" + String(api.document) + ", body=" + String(api.documentBody) + ", tizen=" + String(api.tizen) + ", tvinputdevice=" + String(api.tvInputDevice) + ", application=" + String(api.application)
     ].join("\n");
   }
 
   function renderDiagnostics() {
     var panel = ensureDiagnosticsPanel();
-    var modal = ensureExitModal();
-    var panelBody;
-
+    var body;
     if (!panel) {
       return false;
     }
-
-    setDataAttribute(panel, "data-open", state.diagnosticsOpen ? "true" : "false");
-    setAttributeIfPossible(panel, "aria-hidden", state.diagnosticsOpen ? "false" : "true");
-
-    panelBody = findDiagnosticsBody(panel);
-    if (panelBody) {
-      panelBody.textContent = buildDiagnosticsText();
+    setAttribute(panel, "data-open", state.diagnosticsOpen ? "true" : "false");
+    setAttribute(panel, "aria-hidden", state.diagnosticsOpen ? "false" : "true");
+    body = findDiagnosticsBody(panel);
+    if (body) {
+      body.textContent = buildDiagnosticsText();
     } else {
       panel.textContent = buildDiagnosticsText();
     }
-
-    if (modal) {
-      setDataAttribute(modal, "data-open", state.exitModalOpen ? "true" : "false");
-      setAttributeIfPossible(modal, "aria-hidden", state.exitModalOpen ? "false" : "true");
-    }
-
     return true;
   }
 
   function setDiagnosticsOpen(isOpen) {
     state.diagnosticsOpen = Boolean(isOpen);
-    state.lastConsumedAction = state.diagnosticsOpen
-      ? "diagnostics:open"
-      : "diagnostics:close";
+    state.lastConsumedAction = state.diagnosticsOpen ? "diagnostics:open" : "diagnostics:close";
     renderDiagnostics();
+  }
+
+  function toggleDiagnostics() {
+    setDiagnosticsOpen(!state.diagnosticsOpen);
+  }
+
+  function openExitModal() {
+    var modal = ensureExitModal();
+    if (!modal) {
+      return false;
+    }
+    previousFocusBeforeExitModal = currentFocusedElement;
+    state.exitModalOpen = true;
+    setAttribute(modal, "data-open", "true");
+    setAttribute(modal, "aria-hidden", "false");
+    state.lastConsumedAction = "exit-modal:open";
+    return true;
+  }
+
+  function closeExitModal(reason) {
+    var modal = findExitModal();
+    state.exitModalOpen = false;
+    if (modal) {
+      setAttribute(modal, "data-open", "false");
+      setAttribute(modal, "aria-hidden", "true");
+    }
+    state.lastConsumedAction = "exit-modal:close:" + (reason || "unknown");
+    if (previousFocusBeforeExitModal) {
+      applyFocus(previousFocusBeforeExitModal, "restore");
+    }
+    renderDiagnostics();
+    return true;
+  }
+
+  function attemptAppExit() {
+    var tizenObject = globalScope && globalScope.tizen;
+    var app;
+    state.lastExitAttempt = now();
+    try {
+      app = tizenObject && tizenObject.application && tizenObject.application.getCurrentApplication ? tizenObject.application.getCurrentApplication() : null;
+      if (app && typeof app.exit === "function") {
+        app.exit();
+        state.lastExitResult = { ok: true, message: "tizen.application.exit called" };
+        return true;
+      }
+    } catch (error) {
+      state.lastExitResult = { ok: false, message: error && error.message ? error.message : String(error) };
+      return false;
+    }
+    state.lastExitResult = { ok: false, message: "Tizen application exit API unavailable" };
+    return false;
+  }
+
+  function isEditableTarget(element) {
+    var tagName;
+    var role;
+    if (!element) {
+      return false;
+    }
+    if (element.isContentEditable === true || element.contentEditable === "true") {
+      return true;
+    }
+    tagName = toLower(element.tagName || "");
+    if (tagName === "input" || tagName === "textarea" || tagName === "select") {
+      return true;
+    }
+    role = getAttribute(element, "role");
+    return role === "textbox";
+  }
+
+  function getRect(element) {
+    var rect;
+    if (!element || typeof element.getBoundingClientRect !== "function") {
+      return { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 };
+    }
+    rect = element.getBoundingClientRect();
+    return {
+      left: typeof rect.left === "number" ? rect.left : 0,
+      top: typeof rect.top === "number" ? rect.top : 0,
+      right: typeof rect.right === "number" ? rect.right : 0,
+      bottom: typeof rect.bottom === "number" ? rect.bottom : 0,
+      width: typeof rect.width === "number" ? rect.width : 0,
+      height: typeof rect.height === "number" ? rect.height : 0
+    };
+  }
+
+  function isVisible(element) {
+    var rect;
+    var style;
+    if (!element || isInsideModuleUi(element)) {
+      return false;
+    }
+    rect = getRect(element);
+    if (rect.width < 4 || rect.height < 4) {
+      return false;
+    }
+    if (globalScope && typeof globalScope.getComputedStyle === "function") {
+      try {
+        style = globalScope.getComputedStyle(element);
+        if (style && (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0)) {
+          return false;
+        }
+      } catch (_error) {
+        return true;
+      }
+    }
+    return true;
+  }
+
+  function isCandidate(element) {
+    var tagName;
+    var role;
+    var tabIndex;
+    if (!isVisible(element)) {
+      return false;
+    }
+    tagName = toLower(element.tagName || "");
+    role = toLower(getAttribute(element, "role") || "");
+    if (tagName === "button" || tagName === "a" || tagName === "input" || tagName === "textarea" || tagName === "select" || tagName === "label" || tagName === "summary") {
+      return true;
+    }
+    if (role === "button" || role === "link" || role === "menuitem" || role === "checkbox" || role === "tab") {
+      return true;
+    }
+    if (typeof element.tabIndex === "number" && element.tabIndex >= 0) {
+      return true;
+    }
+    tabIndex = getAttribute(element, "tabindex");
+    if (tabIndex !== null && tabIndex !== "" && parseInt(tabIndex, 10) >= 0) {
+      return true;
+    }
+    if (typeof element.onclick === "function") {
+      return true;
+    }
+    return elementMatches(element, "[data-testid], [class*='button'], [class*='Button'], [class*='btn'], [class*='card'], [class*='Card'], [class*='poster'], [class*='Poster'], [class*='tile'], [class*='Tile'], [class*='nav'], [class*='Nav'], [class*='menu'], [class*='Menu'], [class*='control'], [class*='Control'], [class*='login'], [class*='Login'], [class*='signup'], [class*='Signup'], [class*='auth'], [class*='Auth']");
+  }
+
+  function getRoleHint(element) {
+    var tagName = toLower(element && element.tagName || "");
+    var role = toLower(getAttribute(element, "role") || "");
+    var className = toLower(element && element.className || "");
+    var id = toLower(element && element.id || "");
+    var text = className + " " + id + " " + role;
+    if (tagName === "input" || tagName === "textarea" || role === "textbox") {
+      return "auth-input";
+    }
+    if (tagName === "button" || role === "button") {
+      return "button";
+    }
+    if (tagName === "a" || role === "link") {
+      return "link";
+    }
+    if (text.indexOf("player") >= 0 || text.indexOf("control") >= 0 || text.indexOf("seek") >= 0) {
+      return "player-control";
+    }
+    if (text.indexOf("login") >= 0 || text.indexOf("signup") >= 0 || text.indexOf("auth") >= 0) {
+      return "auth-control";
+    }
+    if (text.indexOf("card") >= 0 || text.indexOf("poster") >= 0 || text.indexOf("tile") >= 0) {
+      return "content-card";
+    }
+    if (text.indexOf("nav") >= 0 || text.indexOf("menu") >= 0) {
+      return "app-navigation";
+    }
+    return role || tagName || "candidate";
+  }
+
+  function collectCandidates() {
+    var documentObject = getDocument();
+    var selected;
+    var candidates = [];
+    var seen = [];
+    var i;
+    var element;
+    if (!documentObject || typeof documentObject.querySelectorAll !== "function") {
+      state.candidateCount = 0;
+      return candidates;
+    }
+    if (candidateCache.items.length && now() - candidateCache.timestamp < FOCUS_CACHE_MS) {
+      return candidateCache.items.slice();
+    }
+    selected = documentObject.querySelectorAll(candidateSelectors);
+    for (i = 0; i < selected.length; i += 1) {
+      element = selected[i];
+      if (seen.indexOf(element) < 0 && isCandidate(element)) {
+        seen.push(element);
+        candidates.push(element);
+      }
+    }
+    state.candidateCount = candidates.length;
+    candidateCache.items = candidates.slice();
+    candidateCache.timestamp = now();
+    return candidates;
+  }
+
+  function invalidateCandidateCache() {
+    candidateCache.items = [];
+    candidateCache.timestamp = 0;
+  }
+
+  function getElementText(element) {
+    var label;
+    var text;
+    if (!element) {
+      return "";
+    }
+    label = getAttribute(element, "aria-label") || getAttribute(element, "title") || getAttribute(element, "placeholder") || "";
+    text = label || element.textContent || element.value || "";
+    return trimText(String(text));
+  }
+
+  function clearCurrentFocus() {
+    if (currentFocusedElement) {
+      removeAttribute(currentFocusedElement, FOCUS_ATTRIBUTE);
+    }
+  }
+
+  function applyFocus(element, reason) {
+    if (!element || !isVisible(element)) {
+      return false;
+    }
+    clearCurrentFocus();
+    currentFocusedElement = element;
+    setAttribute(element, FOCUS_ATTRIBUTE, "true");
+    state.currentFocusRole = getRoleHint(element);
+    state.currentFocusText = getElementText(element);
+    state.lastConsumedAction = "focus:" + (reason || "set");
+    try {
+      if (typeof element.focus === "function") {
+        element.focus({ preventScroll: false });
+      }
+    } catch (_error) {
+      try {
+        element.focus();
+      } catch (__error) {}
+    }
+    try {
+      if (typeof element.scrollIntoView === "function") {
+        element.scrollIntoView({ block: "nearest", inline: "nearest" });
+      }
+    } catch (_ignore) {}
+    renderDiagnostics();
+    return true;
+  }
+
+  function getCenter(rect) {
+    return {
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2
+    };
+  }
+
+  function directionScore(fromRect, candidateRect, direction) {
+    var from = getCenter(fromRect);
+    var to = getCenter(candidateRect);
+    var primary;
+    var secondary;
+    if (direction === "ArrowLeft") {
+      primary = from.x - to.x;
+      secondary = Math.abs(from.y - to.y);
+    } else if (direction === "ArrowRight") {
+      primary = to.x - from.x;
+      secondary = Math.abs(from.y - to.y);
+    } else if (direction === "ArrowUp") {
+      primary = from.y - to.y;
+      secondary = Math.abs(from.x - to.x);
+    } else {
+      primary = to.y - from.y;
+      secondary = Math.abs(from.x - to.x);
+    }
+    if (primary <= 2) {
+      return Infinity;
+    }
+    return primary * 1000 + secondary;
+  }
+
+  function focusInitial(direction) {
+    var candidates = collectCandidates();
+    var index = 0;
+    if (!candidates.length) {
+      return false;
+    }
+    if (direction === "ArrowUp" || direction === "ArrowLeft") {
+      index = candidates.length - 1;
+    }
+    return applyFocus(candidates[index], "initial");
+  }
+
+  function moveFocus(direction) {
+    var candidates = collectCandidates();
+    var currentRect;
+    var best = null;
+    var bestScore = Infinity;
+    var currentIndex;
+    var i;
+    var score;
+    if (!candidates.length) {
+      state.lastConsumedAction = "focus:no-candidates";
+      return false;
+    }
+    if (!currentFocusedElement || candidates.indexOf(currentFocusedElement) < 0 || !isVisible(currentFocusedElement)) {
+      return focusInitial(direction);
+    }
+    currentRect = getRect(currentFocusedElement);
+    for (i = 0; i < candidates.length; i += 1) {
+      if (candidates[i] === currentFocusedElement) {
+        continue;
+      }
+      score = directionScore(currentRect, getRect(candidates[i]), direction);
+      if (score < bestScore) {
+        best = candidates[i];
+        bestScore = score;
+      }
+    }
+    if (!best || bestScore === Infinity) {
+      currentIndex = candidates.indexOf(currentFocusedElement);
+      if (direction === "ArrowRight" || direction === "ArrowDown") {
+        best = candidates[(currentIndex + 1) % candidates.length];
+      } else {
+        best = candidates[(currentIndex - 1 + candidates.length) % candidates.length];
+      }
+    }
+    return applyFocus(best, direction);
+  }
+
+  function clickElement(element) {
+    if (!element) {
+      return false;
+    }
+    try {
+      if (typeof element.click === "function") {
+        element.click();
+        return true;
+      }
+    } catch (_error) {}
+    return false;
+  }
+
+  function activateFocused() {
+    var element = currentFocusedElement;
+    var tagName;
+    var role;
+    if (!element || !isVisible(element)) {
+      if (!focusInitial("ArrowDown")) {
+        return false;
+      }
+      element = currentFocusedElement;
+    }
+    if (!element) {
+      return false;
+    }
+    tagName = toLower(element.tagName || "");
+    role = toLower(getAttribute(element, "role") || "");
+    if (tagName === "input" || tagName === "textarea" || tagName === "select" || role === "textbox") {
+      try {
+        if (typeof element.focus === "function") {
+          element.focus();
+        }
+      } catch (_ignore) {}
+      state.lastConsumedAction = "activate:editable-focus";
+      renderDiagnostics();
+      return true;
+    }
+    state.lastConsumedAction = "activate:" + getRoleHint(element);
+    clickElement(element);
+    renderDiagnostics();
+    return true;
+  }
+
+  function getEventKeyName(event) {
+    var keyName = "";
+    var numericCode;
+    if (!event) {
+      return "";
+    }
+    keyName = event.keyName || (event.detail && event.detail.keyName) || event.key || event.code || "";
+    if (keyName && hasOwn(keyAliasMap, keyName)) {
+      return keyAliasMap[keyName];
+    }
+    if (keyName && (keyName.indexOf("Arrow") === 0 || hasOwn(diagnosticsKeys, keyName) || keyName.indexOf("Media") === 0 || keyName === "Enter" || keyName === "Back")) {
+      return keyName;
+    }
+    numericCode = typeof event.keyCode === "number" ? event.keyCode : (typeof event.which === "number" ? event.which : null);
+    if (numericCode !== null && hasOwn(keyCodeMap, numericCode)) {
+      return keyCodeMap[numericCode];
+    }
+    return keyName || "";
+  }
+
+  function normalizeEvent(event, pathName) {
+    var keyCode = event && typeof event.keyCode === "number" ? event.keyCode : null;
+    var which = event && typeof event.which === "number" ? event.which : null;
+    var normalizedKey = getEventKeyName(event);
+    var raw = {
+      path: pathName || "unknown",
+      type: event && event.type ? event.type : "unknown",
+      key: event && typeof event.key === "string" ? event.key : "",
+      code: event && typeof event.code === "string" ? event.code : "",
+      keyCode: keyCode,
+      which: which,
+      keyName: event && event.keyName ? event.keyName : (event && event.detail && event.detail.keyName ? event.detail.keyName : ""),
+      normalizedKey: normalizedKey,
+      editable: isEditableTarget(event && event.target ? event.target : null)
+    };
+    state.lastRawEvent = raw;
+    state.lastKey = raw;
+    return raw;
+  }
+
+  function shouldIgnoreDuplicate(raw) {
+    var signature = raw.type + ":" + raw.normalizedKey + ":" + String(raw.keyCode) + ":" + String(raw.which);
+    var timestamp = now();
+    if (signature === lastHandled.signature && timestamp - lastHandled.timestamp < DUPLICATE_EVENT_WINDOW_MS) {
+      return true;
+    }
+    lastHandled.signature = signature;
+    lastHandled.timestamp = timestamp;
+    return false;
+  }
+
+  function consumeEvent(event) {
+    if (!event) {
+      return;
+    }
+    if (typeof event.preventDefault === "function") {
+      event.preventDefault();
+    }
+    if (typeof event.stopPropagation === "function") {
+      event.stopPropagation();
+    }
+    event.cancelBubble = true;
+    event.returnValue = false;
+  }
+
+  function tryClickByTextOrLabel(keywords) {
+    var candidates = collectCandidates();
+    var i;
+    var text;
+    for (i = 0; i < candidates.length; i += 1) {
+      text = toLower(getElementText(candidates[i]) + " " + getAttribute(candidates[i], "aria-label") + " " + (candidates[i].className || "") + " " + (candidates[i].id || ""));
+      if (containsAny(text, keywords)) {
+        clickElement(candidates[i]);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function containsAny(text, keywords) {
+    var i;
+    for (i = 0; i < keywords.length; i += 1) {
+      if (text.indexOf(keywords[i]) >= 0) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function controlVideo(action) {
+    var video = getPrimaryVideo();
+    var duration;
+    if (!video) {
+      state.lastPlayerActionResult = action + ":no-video";
+      refreshVideoState();
+      return false;
+    }
+    try {
+      if (action === "toggle") {
+        if (video.paused || video.ended) {
+          if (typeof video.play === "function") {
+            video.play();
+          }
+          state.lastPlayerActionResult = "toggle:play";
+        } else {
+          if (typeof video.pause === "function") {
+            video.pause();
+          }
+          state.lastPlayerActionResult = "toggle:pause";
+        }
+      } else if (action === "play") {
+        if (typeof video.play === "function") {
+          video.play();
+        }
+        state.lastPlayerActionResult = "play";
+      } else if (action === "pause") {
+        if (typeof video.pause === "function") {
+          video.pause();
+        }
+        state.lastPlayerActionResult = "pause";
+      } else if (action === "stop") {
+        if (typeof video.pause === "function") {
+          video.pause();
+        }
+        video.currentTime = 0;
+        state.lastPlayerActionResult = "stop";
+      } else if (action === "forward") {
+        duration = typeof video.duration === "number" && isFinite(video.duration) ? video.duration : null;
+        video.currentTime = duration === null ? video.currentTime + SEEK_STEP_SECONDS : Math.min(duration, video.currentTime + SEEK_STEP_SECONDS);
+        state.lastPlayerActionResult = "seek:forward";
+      } else if (action === "rewind") {
+        video.currentTime = Math.max(0, video.currentTime - SEEK_STEP_SECONDS);
+        state.lastPlayerActionResult = "seek:rewind";
+      }
+      refreshVideoState();
+      renderDiagnostics();
+      return true;
+    } catch (error) {
+      state.lastPlayerActionResult = action + ":error:" + (error && error.message ? error.message : String(error));
+      refreshVideoState();
+      renderDiagnostics();
+      return false;
+    }
+  }
+
+  function isPlayerRouteOrVideoActive() {
+    var path = toLower(getLocationPath());
+    var video = getPrimaryVideo();
+    return Boolean(video) || path.indexOf("player") >= 0 || path.indexOf("stream") >= 0 || path.indexOf("watch") >= 0;
+  }
+
+  function dispatchEscapeFallback() {
+    var documentObject = getDocument();
+    var event;
+    if (!documentObject || typeof globalScope.KeyboardEvent !== "function") {
+      return false;
+    }
+    try {
+      event = new globalScope.KeyboardEvent("keydown", {
+        key: "Escape",
+        code: "Escape",
+        keyCode: 27,
+        which: 27,
+        bubbles: true,
+        cancelable: true
+      });
+      documentObject.dispatchEvent(event);
+      return true;
+    } catch (_error) {
+      return false;
+    }
+  }
+
+  function handleBack() {
+    var video = getPrimaryVideo();
+    if (state.diagnosticsOpen) {
+      setDiagnosticsOpen(false);
+      state.lastBackResolution = "closed-diagnostics";
+      return true;
+    }
+    if (state.exitModalOpen) {
+      closeExitModal("back");
+      state.lastBackResolution = "closed-exit-modal";
+      return true;
+    }
+    if (currentFocusedElement && isEditableTarget(currentFocusedElement)) {
+      try {
+        currentFocusedElement.blur();
+      } catch (_ignore) {}
+      state.lastBackResolution = "blurred-editable";
+      renderDiagnostics();
+      return true;
+    }
+    if (isPlayerRouteOrVideoActive()) {
+      if (video && typeof video.pause === "function") {
+        try {
+          video.pause();
+        } catch (_ignorePause) {}
+      }
+      if (tryClickByTextOrLabel(["back", "close", "exit", "return", "arrow"])) {
+        state.lastBackResolution = "clicked-player-back-control";
+        renderDiagnostics();
+        return true;
+      }
+      dispatchEscapeFallback();
+      if (globalScope.history && typeof globalScope.history.back === "function") {
+        try {
+          globalScope.history.back();
+          state.lastBackResolution = "history-back-from-player";
+          renderDiagnostics();
+          return true;
+        } catch (_error) {}
+      }
+      state.lastBackResolution = "player-back-fallback-failed";
+      renderDiagnostics();
+      return true;
+    }
+    if (globalScope.history && typeof globalScope.history.back === "function" && typeof globalScope.history.length === "number" && state.initialHistoryLength !== null && globalScope.history.length > state.initialHistoryLength) {
+      try {
+        globalScope.history.back();
+        state.lastBackResolution = "history-back";
+        renderDiagnostics();
+        return true;
+      } catch (_ignoreHistory) {}
+    }
+    openExitModal();
+    state.lastBackResolution = "opened-exit-modal";
+    renderDiagnostics();
+    return true;
+  }
+
+  function handleNormalizedKey(raw, event) {
+    var keyName = raw.normalizedKey;
+    var handled = false;
+    var action = "";
+    if (!keyName) {
+      return false;
+    }
+    state.lastAction = keyName;
+    if (hasOwn(diagnosticsKeys, keyName)) {
+      toggleDiagnostics();
+      action = "diagnostics-toggle";
+      handled = true;
+    } else if (keyName === "Back") {
+      handled = handleBack();
+      action = "back";
+    } else if (keyName === "MediaPlayPause") {
+      handled = controlVideo("toggle");
+      action = "media-toggle";
+    } else if (keyName === "MediaPlay") {
+      handled = controlVideo("play");
+      action = "media-play";
+    } else if (keyName === "MediaPause") {
+      handled = controlVideo("pause");
+      action = "media-pause";
+    } else if (keyName === "MediaStop") {
+      handled = controlVideo("stop");
+      action = "media-stop";
+    } else if (keyName === "MediaFastForward") {
+      handled = controlVideo("forward");
+      action = "media-forward";
+    } else if (keyName === "MediaRewind") {
+      handled = controlVideo("rewind");
+      action = "media-rewind";
+    } else if (!raw.editable && (keyName === "ArrowLeft" || keyName === "ArrowRight" || keyName === "ArrowUp" || keyName === "ArrowDown")) {
+      handled = moveFocus(keyName);
+      action = "focus-move";
+    } else if (!raw.editable && keyName === "Enter") {
+      handled = activateFocused();
+      action = "activate";
+    }
+    if (handled) {
+      state.lastConsumedAction = action;
+      consumeEvent(event);
+      renderDiagnostics();
+    }
+    return handled;
+  }
+
+  function onRemoteKey(event, pathName) {
+    var raw = normalizeEvent(event, pathName);
+    if (shouldIgnoreDuplicate(raw)) {
+      return false;
+    }
+    return handleNormalizedKey(raw, event);
+  }
+
+  function onTizenHardwareKey(event) {
+    var keyName = event && event.keyName ? event.keyName : (event && event.detail && event.detail.keyName ? event.detail.keyName : "");
+    if (toLower(keyName) === "back") {
+      event.keyName = "Back";
+      return onRemoteKey(event, "tizenhwkey");
+    }
+    return onRemoteKey(event, "tizenhwkey");
+  }
+
+  function addListener(target, eventName, handler, pathName) {
+    if (!target || typeof target.addEventListener !== "function") {
+      return false;
+    }
+    target.addEventListener(eventName, function onEvent(event) {
+      handler(event, pathName);
+    }, true);
+    state.listenerPaths.push(pathName + ":" + eventName);
+    return true;
+  }
+
+  function attachKeyListeners() {
+    var documentObject = getDocument();
+    if (state.keyListenerAttached) {
+      return false;
+    }
+    addListener(documentObject, "keydown", onRemoteKey, "document");
+    addListener(documentObject, "keyup", onRemoteKey, "document");
+    addListener(documentObject, "keypress", onRemoteKey, "document");
+    addListener(globalScope, "keydown", onRemoteKey, "window");
+    addListener(globalScope, "keyup", onRemoteKey, "window");
+    addListener(documentObject, "tizenhwkey", onTizenHardwareKey, "document");
+    addListener(globalScope, "tizenhwkey", onTizenHardwareKey, "window");
+    state.keyListenerAttached = true;
+    return true;
   }
 
   function ensureRuntimeUiReady() {
-    injectStylesIfPossible();
+    injectStyles();
     ensureDiagnosticsPanel();
+    ensureExitModal();
     renderDiagnostics();
   }
 
-  function attachDomReadyHookIfNeeded() {
+  function attachDomReadyHook() {
     var documentObject = getDocument();
-
     if (!documentObject || typeof documentObject.addEventListener !== "function" || state.domReadyHookAttached) {
       return false;
     }
-
     if (documentObject.readyState && documentObject.readyState !== "loading") {
       ensureRuntimeUiReady();
       return true;
     }
-
-    documentObject.addEventListener("DOMContentLoaded", function onDocumentReady() {
+    documentObject.addEventListener("DOMContentLoaded", function onDomReady() {
       ensureRuntimeUiReady();
     });
     state.domReadyHookAttached = true;
     return true;
   }
 
-  function getChildren(element) {
-    var children = element && element.children ? element.children : null;
-    var result = [];
-    var i;
-
-    if (!children || typeof children.length !== "number") {
-      return result;
-    }
-
-    for (i = 0; i < children.length; i += 1) {
-      result.push(children[i]);
-    }
-
-    return result;
-  }
-
-  function collectTreeElements(root, output) {
-    var children;
-    var i;
-
-    if (!root) {
-      return;
-    }
-
-    children = getChildren(root);
-    for (i = 0; i < children.length; i += 1) {
-      output.push(children[i]);
-      collectTreeElements(children[i], output);
-    }
-  }
-
-  function getElementAttribute(element, name) {
-    if (!element || typeof element.getAttribute !== "function") {
-      return null;
-    }
-
-    return element.getAttribute(name);
-  }
-
-  function getElementRect(element) {
-    var rect;
-
-    if (!element || typeof element.getBoundingClientRect !== "function") {
-      return {
-        left: 0,
-        top: 0,
-        right: 0,
-        bottom: 0,
-        width: 0,
-        height: 0
-      };
-    }
-
-    rect = element.getBoundingClientRect();
-    return {
-      left: typeof rect.left === "number" ? rect.left : 0,
-      top: typeof rect.top === "number" ? rect.top : 0,
-      right: typeof rect.right === "number" ? rect.right : (typeof rect.left === "number" && typeof rect.width === "number" ? rect.left + rect.width : 0),
-      bottom: typeof rect.bottom === "number" ? rect.bottom : (typeof rect.top === "number" && typeof rect.height === "number" ? rect.top + rect.height : 0),
-      width: typeof rect.width === "number" ? rect.width : 0,
-      height: typeof rect.height === "number" ? rect.height : 0
-    };
-  }
-
-  function getComputedStyleSafe(element) {
-    if (!globalScope || typeof globalScope.getComputedStyle !== "function" || !element) {
-      return null;
-    }
-
-    try {
-      return globalScope.getComputedStyle(element);
-    } catch (_error) {
-      return null;
-    }
-  }
-
-  function isModuleOwnedElement(element) {
-    var current = element;
-
-    while (current) {
-      if (current.dataset && (
-        current.dataset.stremioRemoteDiagnosticsPanel === "1" ||
-        current.dataset.stremioRemoteDiagnosticsBody === "1" ||
-        current.dataset.stremioRemoteExitModal === "1" ||
-        current.dataset.stremioRemoteExitDialog === "1" ||
-        current.dataset.stremioRemoteExitActions === "1" ||
-        current.dataset.stremioRemoteExitButton === "1"
-      )) {
-        return true;
-      }
-      current = current.parentNode || null;
-    }
-
-    return false;
-  }
-
-  function isExitModalButton(element) {
-    return Boolean(
-      element &&
-      element.dataset &&
-      element.dataset.stremioRemoteExitButton === "1"
-    );
-  }
-
-  function getNonNegativeTabIndex(element) {
-    var attributeValue;
-    var parsed;
-
-    if (!element) {
-      return null;
-    }
-
-    if (typeof element.tabIndex === "number") {
-      return element.tabIndex >= 0 ? element.tabIndex : null;
-    }
-
-    attributeValue = getElementAttribute(element, "tabindex");
-    if (attributeValue === null || attributeValue === "") {
-      return null;
-    }
-
-    parsed = parseInt(attributeValue, 10);
-    return parsed >= 0 ? parsed : null;
-  }
-
-  function elementMatchesSelector(element, selector) {
-    if (!element || typeof selector !== "string") {
-      return false;
-    }
-
-    if (typeof element.matches === "function") {
-      try {
-        return element.matches(selector);
-      } catch (_error) {
-        return false;
-      }
-    }
-
-    return false;
-  }
-
-  function getElementRoleHint(element) {
-    var i;
-    var attributeRole;
-    var className;
-    var id;
-    var combinedName;
-
-    for (i = 0; i < genericRoleMap.length; i += 1) {
-      if (elementMatchesSelector(element, genericRoleMap[i].selector)) {
-        return genericRoleMap[i].role;
-      }
-    }
-
-    attributeRole = getElementAttribute(element, "role");
-    className = typeof element.className === "string" ? element.className.toLowerCase() : "";
-    id = typeof element.id === "string" ? element.id.toLowerCase() : "";
-    combinedName = className + " " + id;
-
-    if (attributeRole === "button") {
-      return "button";
-    }
-    if (combinedName.indexOf("dialog") >= 0 || combinedName.indexOf("modal") >= 0) {
-      return "dialog-action";
-    }
-    if (combinedName.indexOf("player") >= 0 || combinedName.indexOf("control") >= 0) {
-      return "player-control";
-    }
-    if (combinedName.indexOf("nav") >= 0 || combinedName.indexOf("menu") >= 0) {
-      return "app-navigation";
-    }
-    if (combinedName.indexOf("card") >= 0 || combinedName.indexOf("poster") >= 0 || combinedName.indexOf("tile") >= 0) {
-      return "content-card";
-    }
-
-    return null;
-  }
-
-  function getGenericCandidateRole(element) {
-    var tagName = typeof element.tagName === "string" ? element.tagName.toLowerCase() : "";
-
-    if (tagName === "a") {
-      return "link";
-    }
-    if (tagName === "button") {
-      return "button";
-    }
-    if (getElementAttribute(element, "role") === "button") {
-      return "button";
-    }
-    if (getNonNegativeTabIndex(element) !== null) {
-      return "focusable";
-    }
-
-    return null;
-  }
-
-  function isGenericCandidateElement(element) {
-    var tagName = typeof element.tagName === "string" ? element.tagName.toLowerCase() : "";
-    var href = getElementAttribute(element, "href");
-
-    if (tagName === "a" && href) {
-      return true;
-    }
-    if (tagName === "button") {
-      return true;
-    }
-    if (getElementAttribute(element, "role") === "button") {
-      return true;
-    }
-    if (getNonNegativeTabIndex(element) !== null) {
-      return true;
-    }
-
-    return false;
-  }
-
-  function isElementVisible(element, options) {
-    var allowModuleOwned = Boolean(options && options.allowModuleOwned);
-    var rect = getElementRect(element);
-    var current = element;
-    var computedStyle;
-
-    if (!element || (!allowModuleOwned && isModuleOwnedElement(element))) {
-      return false;
-    }
-    if (element.disabled === true || getElementAttribute(element, "aria-disabled") === "true") {
-      return false;
-    }
-    if (isEditableTarget(element)) {
-      return false;
-    }
-    if (rect.width <= 0 || rect.height <= 0) {
-      return false;
-    }
-
-    while (current) {
-      computedStyle = getComputedStyleSafe(current);
-      if (
-        current.hidden === true ||
-        getElementAttribute(current, "aria-hidden") === "true" ||
-        (computedStyle && (computedStyle.display === "none" || computedStyle.visibility === "hidden"))
-      ) {
-        return false;
-      }
-      current = current.parentNode || null;
-    }
-
-    return true;
-  }
-
-  function getElementText(element) {
-    return element && typeof element.textContent === "string"
-      ? element.textContent.toLowerCase()
-      : "";
-  }
-
-  function getElementNameMap(element) {
-    return {
-      role: String(getElementAttribute(element, "role") || "").toLowerCase(),
-      ariaLabel: String(getElementAttribute(element, "aria-label") || "").toLowerCase(),
-      title: String(getElementAttribute(element, "title") || "").toLowerCase(),
-      className: typeof element.className === "string" ? element.className.toLowerCase() : "",
-      id: typeof element.id === "string" ? element.id.toLowerCase() : "",
-      text: getElementText(element)
-    };
-  }
-
-  function containsAny(value, terms) {
-    var i;
-
-    if (!value) {
-      return false;
-    }
-
-    for (i = 0; i < terms.length; i += 1) {
-      if (value.indexOf(terms[i]) >= 0) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  function isDialogLikeElement(element) {
-    var names = getElementNameMap(element);
-    var ariaModal = String(getElementAttribute(element, "aria-modal") || "").toLowerCase();
-    var tagName = typeof element.tagName === "string" ? element.tagName.toLowerCase() : "";
-    var isInteractiveControl = (
-      tagName === "a" ||
-      tagName === "button" ||
-      tagName === "input" ||
-      tagName === "select" ||
-      tagName === "textarea" ||
-      names.role === "button" ||
-      names.role === "link"
-    );
-
-    if (names.role === "dialog" || ariaModal === "true") {
-      return true;
-    }
-
-    if (isInteractiveControl) {
-      return false;
-    }
-
-    return Boolean(
-      containsAny(names.className, ["dialog", "modal", "overlay"]) ||
-      containsAny(names.id, ["dialog", "modal", "overlay"])
-    );
-  }
-
-  function isSafeCloseBackAffordance(element) {
-    var names;
-
-    if (!isGenericCandidateElement(element) || !isElementVisible(element)) {
-      return false;
-    }
-
-    names = getElementNameMap(element);
-    return Boolean(
-      containsAny(names.ariaLabel, ["close", "back"]) ||
-      containsAny(names.title, ["close", "back"]) ||
-      containsAny(names.className, ["close", "back"]) ||
-      containsAny(names.id, ["close", "back"]) ||
-      names.text === "close" ||
-      names.text === "back"
-    );
-  }
-
-  function findActiveDialogCloseAffordance() {
+  function observeDomChanges() {
     var documentObject = getDocument();
-    var elements = [];
-    var dialogContainers = [];
-    var activeDialog;
-    var controls = [];
-    var i;
-    var j;
-
-    if (!documentObject || !documentObject.body) {
-      return null;
+    var observer;
+    if (!documentObject || !documentObject.body || typeof globalScope.MutationObserver !== "function") {
+      return false;
     }
-
-    collectTreeElements(documentObject.body, elements);
-    for (i = 0; i < elements.length; i += 1) {
-      if (isDialogLikeElement(elements[i]) && isElementVisible(elements[i])) {
-        dialogContainers.push(elements[i]);
-      }
-    }
-
-    if (!dialogContainers.length) {
-      return null;
-    }
-
-    activeDialog = dialogContainers[dialogContainers.length - 1];
-    collectTreeElements(activeDialog, elements = []);
-    for (j = 0; j < elements.length; j += 1) {
-      if (isSafeCloseBackAffordance(elements[j])) {
-        controls.push(elements[j]);
-      }
-    }
-
-    return controls.length === 1 ? controls[0] : null;
-  }
-
-  function collectExitModalCandidates() {
-    var modal = ensureExitModal();
-    var dialog = findExitDialog(modal);
-    var elements = [];
-    var candidates = [];
-    var i;
-
-    if (!modal || !dialog) {
-      return [];
-    }
-
-    collectTreeElements(dialog, elements);
-    for (i = 0; i < elements.length; i += 1) {
-      if (!isExitModalButton(elements[i])) {
-        continue;
-      }
-      if (!isElementVisible(elements[i], { allowModuleOwned: true })) {
-        continue;
-      }
-
-      candidates.push({
-        element: elements[i],
-        role: String(getElementAttribute(elements[i], "data-stremio-remote-action") || "exit-modal-action"),
-        rect: getElementRect(elements[i]),
-        order: candidates.length
+    try {
+      observer = new globalScope.MutationObserver(function onMutation() {
+        invalidateCandidateCache();
+        refreshVideoState();
+        if (state.diagnosticsOpen) {
+          renderDiagnostics();
+        }
       });
-    }
-
-    return candidates;
-  }
-
-  function collectCandidates(forceRefresh) {
-    var documentObject = getDocument();
-    var elements = [];
-    var seen = [];
-    var candidates = [];
-    var role;
-    var candidate;
-    var i;
-    var element;
-    var activeElement;
-
-    if (!forceRefresh && candidateCache.items.length && (now() - candidateCache.timestamp) < candidateCacheDurationMs) {
-      state.candidateCount = candidateCache.items.length;
-      return candidateCache.items;
-    }
-
-    if (state.exitModalOpen) {
-      candidateCache.items = collectExitModalCandidates();
-      candidateCache.timestamp = now();
-      state.candidateCount = candidateCache.items.length;
-      return candidateCache.items;
-    }
-
-    if (!documentObject || !documentObject.body) {
-      candidateCache.items = [];
-      candidateCache.timestamp = now();
-      state.candidateCount = 0;
-      return candidateCache.items;
-    }
-
-    collectTreeElements(documentObject.body, elements);
-    activeElement = documentObject.activeElement;
-
-    for (i = 0; i < elements.length; i += 1) {
-      element = elements[i];
-      if (seen.indexOf(element) >= 0) {
-        continue;
-      }
-      if (!isGenericCandidateElement(element)) {
-        continue;
-      }
-      if (!isElementVisible(element)) {
-        continue;
-      }
-      if (activeElement && activeElement === element && isEditableTarget(activeElement)) {
-        continue;
-      }
-
-      role = getElementRoleHint(element) || getGenericCandidateRole(element) || "focusable";
-      candidate = {
-        element: element,
-        role: role,
-        rect: getElementRect(element),
-        order: candidates.length
-      };
-
-      seen.push(element);
-      candidates.push(candidate);
-    }
-
-    candidateCache.items = candidates;
-    candidateCache.timestamp = now();
-    state.candidateCount = candidates.length;
-    return candidates;
-  }
-
-  function clearCurrentFocus() {
-    if (currentFocusedElement) {
-      clearDataAttribute(currentFocusedElement, "data-stremio-remote-focus");
-    }
-
-    currentFocusedElement = null;
-    state.currentFocusRole = null;
-  }
-
-  function restorePreviousFocusIfPossible() {
-    var candidates;
-    var candidate;
-
-    if (!previousFocusBeforeExitModal) {
-      clearCurrentFocus();
-      return false;
-    }
-
-    candidates = collectCandidates(true);
-    candidate = findCandidateByElement(candidates, previousFocusBeforeExitModal);
-    previousFocusBeforeExitModal = null;
-
-    if (!candidate) {
-      clearCurrentFocus();
-      return false;
-    }
-
-    applyFocus(candidate);
-    return true;
-  }
-
-  function findCandidateByElement(candidates, element) {
-    var i;
-
-    for (i = 0; i < candidates.length; i += 1) {
-      if (candidates[i].element === element) {
-        return candidates[i];
-      }
-    }
-
-    return null;
-  }
-
-  function focusElementIfSafe(element) {
-    if (!element || typeof element.focus !== "function" || isEditableTarget(element)) {
-      return;
-    }
-
-    try {
-      element.focus({ preventScroll: true });
+      observer.observe(documentObject.body, { childList: true, subtree: true, attributes: true });
+      return true;
     } catch (_error) {
-      try {
-        element.focus();
-      } catch (_nestedError) {
-        // No-op: focus is best effort.
-      }
-    }
-  }
-
-  function scrollElementIntoViewIfNeeded(element, rect) {
-    var viewportWidth = typeof globalScope.innerWidth === "number" ? globalScope.innerWidth : 0;
-    var viewportHeight = typeof globalScope.innerHeight === "number" ? globalScope.innerHeight : 0;
-    var needsScroll;
-
-    if (!element || typeof element.scrollIntoView !== "function") {
-      return;
-    }
-
-    if (!viewportWidth || !viewportHeight) {
-      return;
-    }
-
-    needsScroll = rect.top < 0 || rect.left < 0 || rect.bottom > viewportHeight || rect.right > viewportWidth;
-    if (!needsScroll) {
-      return;
-    }
-
-    try {
-      element.scrollIntoView({
-        block: "nearest",
-        inline: "nearest"
-      });
-    } catch (_error) {
-      try {
-        element.scrollIntoView();
-      } catch (_nestedError) {
-        // No-op: scroll is best effort.
-      }
-    }
-  }
-
-  function applyFocus(candidate) {
-    if (!candidate) {
-      clearCurrentFocus();
       return false;
     }
-
-    if (currentFocusedElement && currentFocusedElement !== candidate.element) {
-      clearDataAttribute(currentFocusedElement, "data-stremio-remote-focus");
-    }
-
-    setDataAttribute(candidate.element, "data-stremio-remote-focus", "true");
-    currentFocusedElement = candidate.element;
-    state.currentFocusRole = candidate.role;
-
-    focusElementIfSafe(candidate.element);
-    scrollElementIntoViewIfNeeded(candidate.element, candidate.rect);
-    return true;
   }
 
-  function getRectCenter(rect) {
+  function getState() {
+    refreshApiAvailability();
+    refreshVideoState();
     return {
-      x: rect.left + (rect.width / 2),
-      y: rect.top + (rect.height / 2)
+      initialized: state.initialized,
+      version: state.version,
+      sourceMarker: state.sourceMarker,
+      injectionMarker: state.injectionMarker,
+      initTime: state.initTime,
+      registeredKeys: state.registeredKeys.slice(),
+      failedKeys: state.failedKeys.slice(),
+      listenerPaths: state.listenerPaths.slice(),
+      apiAvailability: state.apiAvailability,
+      diagnosticsOpen: state.diagnosticsOpen,
+      diagnosticsPanelCreated: state.diagnosticsPanelCreated,
+      styleInjected: state.styleInjected,
+      exitModalCreated: state.exitModalCreated,
+      exitModalOpen: state.exitModalOpen,
+      keyListenerAttached: state.keyListenerAttached,
+      currentFocusRole: state.currentFocusRole,
+      currentFocusText: state.currentFocusText,
+      candidateCount: state.candidateCount,
+      lastRawEvent: state.lastRawEvent,
+      lastKey: state.lastKey,
+      lastAction: state.lastAction,
+      lastConsumedAction: state.lastConsumedAction,
+      lastBackResolution: state.lastBackResolution,
+      lastExitAttempt: state.lastExitAttempt,
+      lastExitResult: state.lastExitResult,
+      lastVideoState: state.lastVideoState,
+      lastPlayerActionResult: state.lastPlayerActionResult,
+      runtimeMarkers: {
+        namespacePresent: Boolean(globalScope[NAMESPACE]),
+        initializedNamespace: Boolean(globalScope[NAMESPACE] && globalScope[NAMESPACE].initialized),
+        styleMarkerPresent: Boolean(getDocument() && getDocument().querySelector && getDocument().querySelector("style[" + STYLE_ATTRIBUTE + "='1']")),
+        diagnosticsPanelMarkerPresent: Boolean(findDiagnosticsPanel()),
+        exitModalMarkerPresent: Boolean(findExitModal())
+      }
     };
-  }
-
-  function getDirectionalMetrics(currentRect, candidateRect, direction) {
-    var currentCenter = getRectCenter(currentRect);
-    var candidateCenter = getRectCenter(candidateRect);
-    var majorDistance;
-    var crossDistance;
-    var overlap;
-
-    if (direction === "ArrowRight") {
-      majorDistance = candidateCenter.x - currentCenter.x;
-      crossDistance = Math.abs(candidateCenter.y - currentCenter.y);
-      overlap = Math.min(currentRect.bottom, candidateRect.bottom) - Math.max(currentRect.top, candidateRect.top);
-    } else if (direction === "ArrowLeft") {
-      majorDistance = currentCenter.x - candidateCenter.x;
-      crossDistance = Math.abs(candidateCenter.y - currentCenter.y);
-      overlap = Math.min(currentRect.bottom, candidateRect.bottom) - Math.max(currentRect.top, candidateRect.top);
-    } else if (direction === "ArrowDown") {
-      majorDistance = candidateCenter.y - currentCenter.y;
-      crossDistance = Math.abs(candidateCenter.x - currentCenter.x);
-      overlap = Math.min(currentRect.right, candidateRect.right) - Math.max(currentRect.left, candidateRect.left);
-    } else {
-      majorDistance = currentCenter.y - candidateCenter.y;
-      crossDistance = Math.abs(candidateCenter.x - currentCenter.x);
-      overlap = Math.min(currentRect.right, candidateRect.right) - Math.max(currentRect.left, candidateRect.left);
-    }
-
-    return {
-      majorDistance: majorDistance,
-      crossDistance: crossDistance,
-      overlap: overlap > 0 ? overlap : 0
-    };
-  }
-
-  function passesDirectionalGate(currentRect, candidateRect, direction) {
-    if (direction === "ArrowRight") {
-      return candidateRect.left >= currentRect.right;
-    }
-    if (direction === "ArrowLeft") {
-      return candidateRect.right <= currentRect.left;
-    }
-    if (direction === "ArrowDown") {
-      return candidateRect.top >= currentRect.bottom;
-    }
-
-    return candidateRect.bottom <= currentRect.top;
-  }
-
-  function pickDirectionalCandidate(candidates, currentCandidate, direction) {
-    var bestCandidate = null;
-    var bestScore = Infinity;
-    var i;
-    var candidate;
-    var metrics;
-    var score;
-
-    for (i = 0; i < candidates.length; i += 1) {
-      candidate = candidates[i];
-      if (candidate.element === currentCandidate.element) {
-        continue;
-      }
-      if (!passesDirectionalGate(currentCandidate.rect, candidate.rect, direction)) {
-        continue;
-      }
-
-      metrics = getDirectionalMetrics(currentCandidate.rect, candidate.rect, direction);
-      if (metrics.majorDistance <= 0) {
-        continue;
-      }
-
-      score = (metrics.majorDistance * 10000) + (metrics.crossDistance * 100) - Math.min(metrics.overlap, 99);
-      if (score < bestScore) {
-        bestScore = score;
-        bestCandidate = candidate;
-      }
-    }
-
-    return bestCandidate;
-  }
-
-  function pickSeedCandidate(candidates, direction) {
-    var bestCandidate = null;
-    var bestScore = Infinity;
-    var i;
-    var candidate;
-    var score;
-
-    for (i = 0; i < candidates.length; i += 1) {
-      candidate = candidates[i];
-
-      if (direction === "ArrowLeft") {
-        score = (-candidate.rect.right * 10000) + (candidate.rect.top * 100) + candidate.order;
-      } else if (direction === "ArrowUp") {
-        score = (-candidate.rect.bottom * 10000) + (candidate.rect.left * 100) + candidate.order;
-      } else if (direction === "ArrowDown") {
-        score = (candidate.rect.top * 10000) + (candidate.rect.left * 100) + candidate.order;
-      } else {
-        score = (candidate.rect.left * 10000) + (candidate.rect.top * 100) + candidate.order;
-      }
-
-      if (score < bestScore) {
-        bestScore = score;
-        bestCandidate = candidate;
-      }
-    }
-
-    return bestCandidate;
-  }
-
-  function moveFocus(direction) {
-    var candidates = collectCandidates(false);
-    var currentCandidate;
-    var nextCandidate;
-
-    if (!candidates.length) {
-      clearCurrentFocus();
-      state.candidateCount = 0;
-      return false;
-    }
-
-    currentCandidate = findCandidateByElement(candidates, currentFocusedElement);
-    if (!currentCandidate) {
-      nextCandidate = pickSeedCandidate(candidates, direction);
-      applyFocus(nextCandidate);
-      state.lastConsumedAction = "focus:seed:" + nextCandidate.role;
-      return true;
-    }
-
-    nextCandidate = pickDirectionalCandidate(candidates, currentCandidate, direction);
-    if (!nextCandidate) {
-      return false;
-    }
-
-    applyFocus(nextCandidate);
-    state.lastConsumedAction = "focus:move:" + direction + ":" + nextCandidate.role;
-    return true;
-  }
-
-  function setBackResolution(resolution) {
-    state.lastBackResolution = resolution;
-    state.lastConsumedAction = resolution;
-  }
-
-  function openExitModal() {
-    var candidates;
-
-    previousFocusBeforeExitModal = currentFocusedElement;
-    state.exitModalOpen = true;
-    invalidateCandidateCache();
-    renderDiagnostics();
-
-    candidates = collectCandidates(true);
-    if (candidates.length) {
-      applyFocus(candidates[0]);
-    } else {
-      clearCurrentFocus();
-    }
-
-    setBackResolution("exit-modal:open");
-    renderDiagnostics();
-    return true;
-  }
-
-  function closeExitModal(reason) {
-    state.exitModalOpen = false;
-    invalidateCandidateCache();
-
-    if (reason === "back") {
-      setBackResolution("exit-modal:keep-watching");
-    } else {
-      state.lastConsumedAction = "exit-modal:keep-watching";
-    }
-
-    restorePreviousFocusIfPossible();
-    renderDiagnostics();
-    return true;
-  }
-
-  function canUseHistoryBack() {
-    var historyObject = globalScope && globalScope.history;
-    var historyLength = historyObject && typeof historyObject.length === "number"
-      ? historyObject.length
-      : null;
-    var currentPath = getLocationPath();
-
-    if (!historyObject || typeof historyObject.back !== "function") {
-      return false;
-    }
-
-    if (historyLength !== null && state.initialHistoryLength !== null && historyLength > state.initialHistoryLength) {
-      return true;
-    }
-
-    if (currentPath && state.initialPath && currentPath !== state.initialPath) {
-      return true;
-    }
-
-    return false;
-  }
-
-  function attemptAppExit() {
-    var tizenObject = globalScope && globalScope.tizen;
-    var applicationApi = tizenObject && tizenObject.application;
-    var app;
-
-    state.lastExitAttempt = now();
-
-    if (!applicationApi || typeof applicationApi.getCurrentApplication !== "function") {
-      state.lastExitResult = {
-        ok: false,
-        message: "application API unavailable"
-      };
-      return false;
-    }
-
-    try {
-      app = applicationApi.getCurrentApplication();
-      if (!app || typeof app.exit !== "function") {
-        state.lastExitResult = {
-          ok: false,
-          message: "current application exit unavailable"
-        };
-        return false;
-      }
-
-      state.lastExitResult = {
-        ok: true,
-        message: "exit requested"
-      };
-      app.exit();
-      return true;
-    } catch (error) {
-      state.lastExitResult = {
-        ok: false,
-        message: error && error.message ? error.message : String(error)
-      };
-      return false;
-    }
-  }
-
-  function handleBackAction() {
-    var safeCloseAffordance;
-
-    if (state.diagnosticsOpen) {
-      setDiagnosticsOpen(false);
-      state.lastBackResolution = "diagnostics:close";
-      renderDiagnostics();
-      return true;
-    }
-
-    if (state.exitModalOpen) {
-      closeExitModal("back");
-      return true;
-    }
-
-    safeCloseAffordance = findActiveDialogCloseAffordance();
-    if (safeCloseAffordance && typeof safeCloseAffordance.click === "function") {
-      safeCloseAffordance.click();
-      setBackResolution("dialog:close-affordance");
-      invalidateCandidateCache();
-      renderDiagnostics();
-      return true;
-    }
-
-    if (canUseHistoryBack()) {
-      globalScope.history.back();
-      setBackResolution("history:back");
-      invalidateCandidateCache();
-      clearCurrentFocus();
-      renderDiagnostics();
-      return true;
-    }
-
-    return openExitModal();
-  }
-
-  function activateFocusedCandidate() {
-    var candidates = collectCandidates(false);
-    var currentCandidate = findCandidateByElement(candidates, currentFocusedElement);
-    var previousAction = state.lastConsumedAction;
-
-    if (!currentCandidate) {
-      return false;
-    }
-
-    if (typeof currentCandidate.element.click === "function") {
-      currentCandidate.element.click();
-      if (state.lastConsumedAction === previousAction) {
-        state.lastConsumedAction = "activate:" + currentCandidate.role;
-      }
-      return true;
-    }
-
-    return false;
-  }
-
-  function isEditableContext(event) {
-    var documentObject = getDocument();
-
-    if (event && event.target && isEditableTarget(event.target)) {
-      return true;
-    }
-    if (documentObject && documentObject.activeElement && isEditableTarget(documentObject.activeElement)) {
-      return true;
-    }
-
-    return false;
-  }
-
-  function isBackKey(lastKey) {
-    return Boolean(
-      lastKey &&
-      (lastKey.key === "Back" || lastKey.code === "BrowserBack")
-    );
-  }
-
-  function attachKeyListener() {
-    var documentObject = getDocument();
-
-    if (!documentObject || typeof documentObject.addEventListener !== "function" || state.keyListenerAttached) {
-      return false;
-    }
-
-    documentObject.addEventListener("keydown", handleKeydown);
-    state.keyListenerAttached = true;
-    return true;
-  }
-
-  function handleKeydown(event) {
-    var editableContext = isEditableContext(event);
-
-    state.lastKey = normalizeKeyEvent(event);
-    if (editableContext) {
-      state.lastKey.editable = true;
-    }
-    state.lastConsumedAction = null;
-
-    if (isDiagnosticsToggleKey(state.lastKey.key)) {
-      if (event && typeof event.preventDefault === "function") {
-        event.preventDefault();
-      }
-      if (event && typeof event.stopPropagation === "function") {
-        event.stopPropagation();
-      }
-
-      setDiagnosticsOpen(!state.diagnosticsOpen);
-      return;
-    }
-
-    if (isBackKey(state.lastKey)) {
-      if (handleBackAction()) {
-        if (event && typeof event.preventDefault === "function") {
-          event.preventDefault();
-        }
-        if (event && typeof event.stopPropagation === "function") {
-          event.stopPropagation();
-        }
-      }
-      renderDiagnostics();
-      return;
-    }
-
-    if (editableContext) {
-      renderDiagnostics();
-      return;
-    }
-
-    if (
-      state.lastKey.key === "ArrowLeft" ||
-      state.lastKey.key === "ArrowRight" ||
-      state.lastKey.key === "ArrowUp" ||
-      state.lastKey.key === "ArrowDown"
-    ) {
-      if (moveFocus(state.lastKey.key)) {
-        if (event && typeof event.preventDefault === "function") {
-          event.preventDefault();
-        }
-        if (event && typeof event.stopPropagation === "function") {
-          event.stopPropagation();
-        }
-      }
-      renderDiagnostics();
-      return;
-    }
-
-    if (state.lastKey.key === "Enter") {
-      if (activateFocusedCandidate()) {
-        if (event && typeof event.preventDefault === "function") {
-          event.preventDefault();
-        }
-        if (event && typeof event.stopPropagation === "function") {
-          event.stopPropagation();
-        }
-      }
-      renderDiagnostics();
-      return;
-    }
-
-    renderDiagnostics();
   }
 
   function init() {
-    if (!state.initTime) {
-      state.initTime = now();
-    }
-    if (!state.initialPath) {
-      state.initialPath = getLocationPath();
-    }
-    if (state.initialHistoryLength === null && globalScope && globalScope.history && typeof globalScope.history.length === "number") {
-      state.initialHistoryLength = globalScope.history.length;
-    }
-
+    state.initTime = now();
+    state.initialPath = getLocationPath();
+    state.initialHistoryLength = globalScope.history && typeof globalScope.history.length === "number" ? globalScope.history.length : null;
     refreshApiAvailability();
-    injectStylesIfPossible();
     registerOptionalKeys();
-    attachKeyListener();
-    attachDomReadyHookIfNeeded();
+    attachDomReadyHook();
     ensureRuntimeUiReady();
-    collectCandidates(true);
-
+    attachKeyListeners();
+    observeDomChanges();
     state.initialized = true;
-    runtimeApi.initialized = true;
-
-    return {
-      registeredKeys: state.registeredKeys.slice()
-    };
+    globalScope[NAMESPACE] = runtimeApi;
+    renderDiagnostics();
   }
 
+  var runtimeApi = globalScope[NAMESPACE] || {};
+  runtimeApi.version = RUNTIME_VERSION;
+  runtimeApi.sourceMarker = RUNTIME_SOURCE_MARKER;
+  runtimeApi.injectionMarker = RUNTIME_INJECTION_MARKER;
   runtimeApi.initialized = false;
-  runtimeApi.init = init;
-  runtimeApi.injectStylesIfPossible = injectStylesIfPossible;
-  runtimeApi.registerOptionalKeys = registerOptionalKeys;
   runtimeApi.getState = getState;
-  runtimeApi.renderDiagnostics = renderDiagnostics;
-
+  runtimeApi.openDiagnostics = function openDiagnostics() {
+    setDiagnosticsOpen(true);
+    return getState();
+  };
+  runtimeApi.closeDiagnostics = function closeDiagnostics() {
+    setDiagnosticsOpen(false);
+    return getState();
+  };
+  runtimeApi.toggleDiagnostics = function publicToggleDiagnostics() {
+    toggleDiagnostics();
+    return getState();
+  };
+  runtimeApi.refreshCandidates = function publicRefreshCandidates() {
+    invalidateCandidateCache();
+    return collectCandidates().length;
+  };
+  runtimeApi.handleBack = handleBack;
+  runtimeApi.controlVideo = controlVideo;
   globalScope[NAMESPACE] = runtimeApi;
+
   init();
-})(typeof globalThis !== "undefined" ? globalThis : window);
+  runtimeApi.initialized = true;
+}(typeof window !== "undefined" ? window : globalThis));

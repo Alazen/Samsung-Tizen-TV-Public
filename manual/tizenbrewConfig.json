@@ -1,0 +1,7 @@
+{
+  "modules": [
+    "gh/Alazen/Samsung-Tizen-TV-Public@Stremio-WebApp"
+  ],
+  "autoLaunchServiceList": [],
+  "autoLaunchModule": "gh/Alazen/Samsung-Tizen-TV-Public@Stremio-WebApp"
+}

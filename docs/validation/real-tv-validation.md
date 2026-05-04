@@ -61,7 +61,24 @@ Current result: `partial` for install and launch, `blocked` for remote-control a
 
 ## Current root-cause signal
 
-Because neither `Info` nor A/B/C/D opened diagnostics, the failure is broader than a single Info-key mapping. The next implementation should investigate real-TV key event delivery, optional-key registration, TizenBrew injection timing, and fallback event paths before assuming the focus algorithm alone is the blocker.
+Because neither `Info` nor A/B/C/D opened diagnostics, the failure is broader than a single Info-key mapping. The implementation now needs to prove real-TV key event delivery by adding fallback listener paths and richer diagnostics before treating focus as the only blocker.
+
+## Version 0.1.1 retest checklist
+
+After extracting the runtime fix, committing, and pushing:
+
+1. Fully close and reopen TizenBrewNextGeneration.
+2. Confirm the module card shows version `0.1.1`.
+3. Launch Stremio Web through TizenBrew.
+4. On the home screen, press `Info`.
+5. If `Info` fails, press A/B/C/D and record whether diagnostics opens.
+6. Start a video.
+7. Test Play/Pause.
+8. Test seek forward and seek backward.
+9. Test directional navigation over player controls.
+10. Press Back and confirm it exits the player or returns to the previous Stremio screen.
+11. If login is needed again, verify arrows can reach login inputs, buttons, checkboxes, and Guest login.
+12. Record result as `pass`, `partial`, or `blocked`.
 
 ## Acceptance note
 

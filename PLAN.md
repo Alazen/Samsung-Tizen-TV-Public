@@ -10,6 +10,10 @@ Task 5 is the active emulator smoke-validation bridge against `https://web.strem
 
 Task 6 is the real Samsung TV plus TizenBrew validation gate and final acceptance path. Task 5 never replaces real Samsung TV acceptance.
 
+Real-TV install and launch are partially validated: TizenBrew loaded the GitHub module metadata, Stremio Web launched, login was possible through a manual workaround, and video playback can start. Remote-control acceptance is blocked because `Info` and A/B/C/D did not open diagnostics, and video player Play/Pause, seek/skip, player navigation, and Back did not work.
+
+Version `0.1.1` is the active real-TV key-handling fix candidate. It adds fallback key listener paths, Samsung keyCode mapping, Tizen hardware Back handling, richer diagnostics, direct video controls, player Back fallbacks, and expanded login/auth focus candidates. After commit and push, reopen TizenBrewNextGeneration and confirm the module card shows `0.1.1` before retesting.
+
 ## Public documentation privacy note
 
 Public docs must use placeholders for local checkout paths, Tizen Studio roots, emulator IDs, profile names, debug ports, CDP target IDs, Windows usernames, machine-specific folder names, and signing profile names. Raw local logs should stay outside the repository, or be redacted before commit. Keep commit SHAs and source hashes only when they are needed for source-freshness evidence.
@@ -26,6 +30,13 @@ Public docs must use placeholders for local checkout paths, Tizen Studio roots, 
 - Task 5b: `docs/agent/task-cards/blocked/task-05b-run-and-record-emulator-stremio-smoke-validation.md` - blocked because the observable live target remained `file:///index.html`, not `https://web.stremio.com/`, and the served module did not satisfy the freshness contract.
 - Task 5c: `docs/agent/task-cards/active/task-05c-troubleshoot-emulator-launch-target-and-source-freshness.md` - troubleshooting slice documenting that the disposable harness is not target-equivalent and that the correct bridge path is TizenBrew site-modification injection.
 - Task 5d: `docs/agent/task-cards/active/task-05d-run-tizenbrew-emulator-target-equivalent-smoke.md` - active target-equivalent TizenBrew smoke slice; public hosting is proven, but emulator-side service/debug observability remains blocked.
+
+## Task 6 status
+
+- Task 6: `docs/agent/exec-plans/active/task-06-real-tv-tizenbrew-validation.md` - active real-TV validation gate.
+- Current result: `partial` install and launch, `blocked` remote-control acceptance.
+- Current candidate build: `0.1.1`.
+- Required retest: diagnostics, home navigation, player Play/Pause, seek/skip, player navigation, Back, and login/auth focus if login appears again.
 
 ## Project goal
 
