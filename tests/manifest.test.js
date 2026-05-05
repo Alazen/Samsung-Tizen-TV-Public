@@ -33,11 +33,11 @@ const MANDATORY_TV_KEYS = new Set([
 test("manifest defines a TizenBrew mods module for Stremio Web", () => {
   assert.equal(manifest.packageType, "mods");
   assert.equal(manifest.websiteURL, "https://web.stremio.com/");
-  assert.equal(manifest.main, "src/main.js");
+  assert.equal(manifest.main, "src/main-0.1.3.js");
 });
 
-test("manifest bumps the TV test-build version", () => {
-  assert.equal(manifest.version, "0.1.2");
+test("manifest bumps the TV hotfix version", () => {
+  assert.equal(manifest.version, "0.1.3");
 });
 
 test("manifest keys contain only optional media/color/info keys", () => {
