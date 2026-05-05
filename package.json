@@ -1,6 +1,6 @@
 {
   "name": "stremio-web-tv-remote-tizenbrew",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Initial TizenBrew module skeleton for Stremio Web TV remote behavior on Samsung Tizen TVs.",
   "packageType": "mods",
   "appName": "Stremio Web TV Remote",
