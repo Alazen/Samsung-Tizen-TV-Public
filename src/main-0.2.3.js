@@ -2,7 +2,7 @@
   "use strict";
 
   var NAMESPACE = "__STREMIO_TIZENBREW_REMOTE__";
-  var VERSION = "0.2.4";
+  var VERSION = "0.2.5";
   var DIAGNOSTICS_ATTRIBUTE = "data-stremio-remote-diagnostics-panel";
   var STYLE_ATTRIBUTE = "data-stremio-remote-style";
 
@@ -33,11 +33,23 @@
   };
 
   var keyCodeMap = {
+    8: "Back",
+    27: "Back",
     403: "ColorF0Red",
     404: "ColorF1Green",
     405: "ColorF2Yellow",
     406: "ColorF3Blue",
-    457: "Info"
+    457: "Info",
+    10009: "Back"
+  };
+
+  var keyAliasMap = {
+    Back: "Back",
+    Return: "Back",
+    Escape: "Back",
+    Backspace: "Back",
+    XF86Back: "Back",
+    BrowserBack: "Back"
   };
 
   var state = {
@@ -49,6 +61,7 @@
     lastKey: "",
     lastAction: "",
     lastIgnored: "",
+    lastBack: "",
     lastPlayer: ""
   };
 
@@ -122,13 +135,14 @@
     panel.textContent = [
       "Stremio Web TV Remote Diagnostics",
       "Version: " + VERSION,
-      "Mode: passive debug, Arrow and Enter pass through",
+      "Mode: passive debug, Arrow and Enter pass through, Back handled",
       "Detail page: " + String(isDetailPage()),
       "Streams loading: " + String(isLoadingStreams()),
       "Video not supported text: " + String(hasUnsupportedVideoText()),
       "Last key: " + (state.lastKey || "none"),
       "Last action: " + (state.lastAction || "none"),
       "Last ignored: " + (state.lastIgnored || "none"),
+      "Last back: " + (state.lastBack || "none"),
       "Last player: " + (state.lastPlayer || "none"),
       "Videos: " + debug.count,
       "Video src: " + (debug.src || "none"),
@@ -158,7 +172,61 @@
   }
 
   function normalizeKey(event) {
-    return event && (event.keyName || keyCodeMap[event.keyCode] || event.key || event.code) || "";
+    var raw = event && (event.keyName || event.key || event.code) || "";
+    return keyAliasMap[raw] || keyCodeMap[event && event.keyCode] || raw;
+  }
+
+  function consume(event) {
+    if (event && event.preventDefault) event.preventDefault();
+    if (event && event.stopPropagation) event.stopPropagation();
+    if (event && event.stopImmediatePropagation) event.stopImmediatePropagation();
+  }
+
+  function dispatchEscapeFallback() {
+    var escapeEvent;
+    try {
+      escapeEvent = new KeyboardEvent("keydown", {
+        key: "Escape",
+        code: "Escape",
+        bubbles: true,
+        cancelable: true
+      });
+      document.dispatchEvent(escapeEvent);
+      return true;
+    } catch (_error) {
+      return false;
+    }
+  }
+
+  function handleBack(event) {
+    if (state.diagnosticsOpen) {
+      state.diagnosticsOpen = false;
+      state.lastBack = "closed-diagnostics";
+      renderDiagnostics();
+      consume(event);
+      return true;
+    }
+
+    try {
+      if (window.history && window.history.length > 1 && typeof window.history.back === "function") {
+        window.history.back();
+        state.lastBack = "history-back";
+        renderDiagnostics();
+        consume(event);
+        return true;
+      }
+    } catch (_historyError) {}
+
+    if (dispatchEscapeFallback()) {
+      state.lastBack = "escape-fallback";
+      renderDiagnostics();
+      consume(event);
+      return true;
+    }
+
+    state.lastBack = "pass-through";
+    renderDiagnostics();
+    return false;
   }
 
   function handleKey(event) {
@@ -169,9 +237,12 @@
     if (diagnosticsKeys[normalizedKey]) {
       state.diagnosticsOpen = !state.diagnosticsOpen;
       renderDiagnostics();
-      if (event && event.preventDefault) event.preventDefault();
-      if (event && event.stopPropagation) event.stopPropagation();
+      consume(event);
       return true;
+    }
+
+    if (normalizedKey === "Back") {
+      return handleBack(event);
     }
 
     state.lastIgnored = "pass-through:" + normalizedKey;
