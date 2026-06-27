@@ -19,7 +19,8 @@ Do not rebuild the full Stremio UI unless a later approved plan explicitly choos
 - `src/tizenbrew/stremio-remote/main.js`: canonical TizenBrew Stremio Web remote-control runtime.
 - `src/tizenbrew/stremio-remote/README.md`: source boundary for the current runtime.
 - `harness/tizenbrew/stremio-remote/`: harness notes and future local-debug helpers; do not duplicate runtime code here.
-- Future standalone Tizen wrapper code must be added under a planned app-specific path after an approved PLAN/TaskCard defines the path.
+- `harness/CodexTvRuntimeCheck/`: intentionally repurposed as the standalone Stremio Web Wrapper POC codebase (HTML, CSS, config.xml, and main.js runtime) for standalone TV wrapper validation while older TizenBrew remote testing remains active.
+- Future standalone Tizen wrapper production paths will be defined in a later approved plan.
 
 ## Runtime constraints
 

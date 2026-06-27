@@ -1,0 +1,7 @@
+{
+  "status": "active",
+  "active_taskcard": "TC-005-real-tv-and-final-report",
+  "completed_taskcards": ["TC-001-convert-harness-shell", "TC-002-remote-diagnostics", "TC-003-tests-and-docs", "TC-004-emulator-validation"],
+  "blocked_reason": null,
+  "updated": "2026-06-27"
+}

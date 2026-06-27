@@ -1,61 +1,41 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-    <meta name="description" content="Disposable Samsung TV harness for Stremio remote runtime validation" />
-    <title>Codex TV Runtime Check</title>
+    <meta name="description" content="Stremio Standalone Tizen Wrapper POC" />
+    <title>StremioWebWrapperPOC</title>
     <link rel="stylesheet" type="text/css" href="css/style.css" />
-    <script src="js/stremio-remote.js"></script>
     <script src="js/main.js"></script>
 </head>
 <body>
-    <main class="page-shell">
-        <header class="hero">
-            <p class="eyebrow">Stremio Remote Harness</p>
-            <h1>Task 4C Emulator Validation</h1>
-            <p class="lede">
-                Use the Samsung remote or emulator keys. Open diagnostics with the
-                <strong>Info</strong> key, then validate Back and the module exit modal.
-            </p>
-        </header>
+    <div class="wrapper">
+        <!-- Full-screen iframe for Stremio Web -->
+        <div id="iframe-container" class="iframe-container">
+            <iframe id="app-iframe" src="about:blank" allowfullscreen></iframe>
+        </div>
 
-        <section class="panel-grid">
-            <section class="panel">
-                <h2>Focusable Controls</h2>
-                <div class="control-row">
-                    <button type="button">Primary Action</button>
-                    <button type="button">Secondary Action</button>
-                    <a href="#diagnostics">Anchor Target</a>
-                </div>
-            </section>
+        <!-- Loading Surface -->
+        <div id="loading-screen" class="loading-screen">
+            <div class="spinner"></div>
+            <p id="loading-status">Loading Stremio...</p>
+        </div>
 
-            <section class="panel">
-                <h2>Editable Field</h2>
-                <label for="search-box">Search</label>
-                <input id="search-box" type="text" value="stremio" />
-            </section>
-        </section>
-
-        <section class="panel">
-            <h2>Back Fixtures</h2>
-            <div class="control-row">
-                <button id="open-dialog" type="button">Open Fixture Dialog</button>
-                <button id="push-history" type="button">Push History State</button>
+        <!-- Control / Settings Overlay -->
+        <div id="control-panel" class="control-panel" role="region" aria-label="Controls">
+            <div class="panel-header">
+                <h2>Stremio Web Wrapper POC</h2>
             </div>
-        </section>
-
-        <section class="panel" id="diagnostics">
-            <h2>Harness Status</h2>
-            <pre id="runtime-log">Waiting for runtime...</pre>
-        </section>
-    </main>
-
-    <div id="fixture-dialog" role="dialog" aria-modal="true" hidden>
-        <div class="fixture-dialog-card">
-            <h2>Fixture Dialog</h2>
-            <p>This exists only to validate the safe dialog close branch.</p>
-            <button id="close-dialog" type="button" aria-label="Close">Close</button>
+            <div class="control-group">
+                <button id="toggle-mode-btn" type="button" class="btn">Mode: Iframe</button>
+                <button id="launch-btn" type="button" class="btn">Launch</button>
+                <button id="toggle-diag-btn" type="button" class="btn">Toggle Diagnostics</button>
+            </div>
+            <!-- Diagnostics container -->
+            <div id="diagnostics-panel" class="diagnostics-panel hidden">
+                <h3>Diagnostics</h3>
+                <pre id="runtime-log">Waiting for runtime...</pre>
+            </div>
         </div>
     </div>
 </body>

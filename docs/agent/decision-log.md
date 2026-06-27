@@ -36,3 +36,8 @@ Append durable decisions here. Keep entries concise.
 
 - Decision: add 002-compatible templates, execution-plan directories, testing policy, and narrow repo-local skills.
 - Rationale: future long-running agents should work from repo files and checkpointed execution state rather than chat memory.
+
+## 2026-06-27 - Repurpose CodexTvRuntimeCheck harness
+
+- Decision: repurpose the existing `harness/CodexTvRuntimeCheck` project in place as the standalone Stremio Web Wrapper POC.
+- Rationale: allows direct in-place standalone validation on Tizen Emulator/TV without creating a redundant app directory or conflicting with older TizenBrew remote testing, while preserving historical validation records.

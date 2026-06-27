@@ -9,7 +9,7 @@ api_version: "2.3"
 build_type: Debug
 
 # Output name for application
-output_name: CodexTvRuntimeCheck
+output_name: StremioWebWrapperPOC
 
 # Output path for build
 output_path: ""
@@ -27,14 +27,11 @@ trust_anchor: []
 
 # list of files in web project (.html,.css etc) and resources
 files:
-  - .project
-  - .tproject
   - css/style.css
   - icon.png
   - images/tizen_32.png
   - index.html
   - js/main.js
-  - js/stremio-remote.js
 
 # list of files to exclude based on the matched patterns
 excludes:

@@ -57,3 +57,31 @@ Update this file when a risk affects future agents, validation, privacy, or arch
 - Risk: this harness is prepared for `002_Long_run_proceed_with_execution_v2026.06.16_v1.md`, but the 002 prompt text is not yet committed to this repo.
 - Impact: future agents need the user-provided 002 prompt or a committed copy to execute long-run mode exactly.
 - Mitigation: keep templates and execution-state layout compatible; commit 002 only if the user explicitly approves adding that prompt text.
+
+## R-008: Cross-origin iframe same-origin telemetry access failure
+
+- Date: 2026-06-27
+- Risk: Stremio Web loads cross-origin, triggering standard browser SecurityErrors when accessing the iframe's DOM or media state.
+- Impact: diagnostics runtime cannot inspect player element status or video properties directly unless same-origin policies are bypassable or redirection is used.
+- Mitigation: catch SecurityError in same-origin checks, output descriptive status, and expose API for external validation.
+
+## R-009: Focus and key-routing within iframe wrapper
+
+- Date: 2026-06-27
+- Risk: remote keydowns captured by Tizen wrapper outer shell might not naturally propagate to cross-origin iframe content.
+- Impact: Stremio Web interface inside the iframe might not respond to standard remote controller buttons unless focus is actively routed or redirect mode is chosen.
+- Mitigation: validate key-routing on TV emulator and actual device, and keep redirect mode as a fallback.
+
+## R-010: TV Emulator vs Real TV device differences
+
+- Date: 2026-06-27
+- Risk: Tizen TV emulator might succeed in key capture, rendering, or codec negotiation where real Samsung TV hardware fails or exhibits different timing/performance.
+- Impact: false positives in emulator validation.
+- Mitigation: emulator is a syntax/logic check only; final verification must run on real Samsung TV hardware.
+
+## R-011: Video playback format limitations in web container
+
+- Date: 2026-06-27
+- Risk: the standalone Tizen web app container runtime might lack hardware codecs (such as HEVC or high-profile AVC) or DRM support that are available in the system Samsung Browser.
+- Impact: streams that play in the TV browser might fail in the standalone app.
+- Mitigation: log media capabilities (`canPlayType` and `MediaSource.isTypeSupported`) in the wrapper diagnostics interface to troubleshoot playback failures.
