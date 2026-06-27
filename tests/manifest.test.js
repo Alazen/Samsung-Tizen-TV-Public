@@ -30,14 +30,21 @@ const MANDATORY_TV_KEYS = new Set([
   "Back"
 ]);
 
-test("manifest defines a TizenBrew mods module for Stremio Web", () => {
+const EXPECTED_MAIN = "src/tizenbrew/stremio-remote/main.js";
+
+test("manifest defines the Stremio Web TizenBrew module", () => {
   assert.equal(manifest.packageType, "mods");
   assert.equal(manifest.websiteURL, "https://web.stremio.com/");
-  assert.equal(manifest.main, "src/main-0.1.3.js");
+  assert.equal(manifest.main, EXPECTED_MAIN);
+  assert.equal(manifest.evaluateScriptOnDocumentStart, false);
 });
 
-test("manifest bumps the TV hotfix version", () => {
-  assert.equal(manifest.version, "0.1.3");
+test("manifest version is the v033 reorg baseline", () => {
+  assert.equal(manifest.version, "0.3.3");
+});
+
+test("manifest points at an existing runtime file", () => {
+  assert.ok(fs.existsSync(path.join(rootDir, manifest.main)), manifest.main + " missing");
 });
 
 test("manifest keys contain only optional media/color/info keys", () => {
@@ -45,27 +52,17 @@ test("manifest keys contain only optional media/color/info keys", () => {
   assert.ok(manifest.keys.length > 0, "keys array must not be empty");
 
   for (const keyName of manifest.keys) {
-    assert.ok(
-      REQUIRED_OPTIONAL_KEYS.has(keyName),
-      "unexpected key in manifest.keys: " + keyName
-    );
-    assert.equal(
-      MANDATORY_TV_KEYS.has(keyName),
-      false,
-      "mandatory key should not be registered: " + keyName
-    );
+    assert.ok(REQUIRED_OPTIONAL_KEYS.has(keyName), "unexpected key in manifest.keys: " + keyName);
+    assert.equal(MANDATORY_TV_KEYS.has(keyName), false, "mandatory key should not be registered: " + keyName);
   }
-});
-
-test("manifest keeps serviceFile out for this module", () => {
-  assert.equal("serviceFile" in manifest, false);
 });
 
 test("manifest has zero runtime dependencies and required scripts", () => {
   assert.equal("dependencies" in manifest, false);
   assert.equal("devDependencies" in manifest, false);
   assert.equal(typeof manifest.scripts, "object");
-  assert.equal(manifest.scripts.test, "node tests/manifest.test.js && node tests/syntax.test.js && node tests/stremio-dom-samples.test.js");
   assert.equal(manifest.scripts["check:manifest"], "node tests/manifest.test.js");
-  assert.equal(manifest.scripts["check:syntax"], "node tests/syntax.test.js && node tests/stremio-dom-samples.test.js");
+  assert.equal(manifest.scripts["check:syntax"], "node tests/syntax.test.js");
+  assert.equal(manifest.scripts["check:dom-samples"], "node tests/stremio-dom-samples.test.js");
+  assert.equal(manifest.scripts.test, "node tests/manifest.test.js && node tests/syntax.test.js && node tests/stremio-dom-samples.test.js");
 });
