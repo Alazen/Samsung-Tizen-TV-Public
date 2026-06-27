@@ -41,3 +41,8 @@ Append durable decisions here. Keep entries concise.
 
 - Decision: repurpose the existing `harness/CodexTvRuntimeCheck` project in place as the standalone Stremio Web Wrapper POC.
 - Rationale: allows direct in-place standalone validation on Tizen Emulator/TV without creating a redundant app directory or conflicting with older TizenBrew remote testing, while preserving historical validation records.
+
+## 2026-06-27 - Phase 2 Routing and Navigation Adapter Handoff
+
+- Decision: Phase 1 wrapper validation and navigation adapter implementation were completed successfully on the emulator. Proceed with the Phase 2 route of "UX Polish and Detail/Player Navigation Refinement".
+- Rationale: TC-005 and TC-008 emulator validations verified that Stremio Web loads correctly in the standalone iframe, diagnostics toggle works under iframe focus, and the navigation adapter successfully routes Arrow/OK keys between the sidebar and content cards. Because the real TV was bypassed per user instruction, hardware-specific playback issues are not yet verified, but standalone navigation is proven to work in the emulator, prompting us to continue polishing the wrapper UX (player controls, exit menus, and diagnostics polish).

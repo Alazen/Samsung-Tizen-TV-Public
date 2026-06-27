@@ -85,3 +85,17 @@ Update this file when a risk affects future agents, validation, privacy, or arch
 - Risk: the standalone Tizen web app container runtime might lack hardware codecs (such as HEVC or high-profile AVC) or DRM support that are available in the system Samsung Browser.
 - Impact: streams that play in the TV browser might fail in the standalone app.
 - Mitigation: log media capabilities (`canPlayType` and `MediaSource.isTypeSupported`) in the wrapper diagnostics interface to troubleshoot playback failures.
+
+## R-012: Bypassing Real TV Acceptance
+
+- Date: 2026-06-27
+- Risk: validation performed exclusively on the emulator bypassing real Samsung TV validation leaves physical remote key codes and hardware media decoders unverified.
+- Impact: risk of deploying broken focus routing or unplayable media paths to production TVs.
+- Mitigation: maintain emulator validation as a logic gate only; require physical TV validation for release candidates.
+
+## R-013: Stremio DOM Layout Shifts and Selector Stability
+
+- Date: 2026-06-27
+- Risk: the navigation adapter relies on cached selectors to identify the Stremio Web sidebar and card elements.
+- Impact: updates to the Stremio Web frontend layout or class names could break focus transition rules, causing focus to get stuck or misrouted.
+- Mitigation: keep selectors lightweight and generic where possible, fall back gracefully to Stremio's native focus handling, and output adapter status in wrapper diagnostics.
