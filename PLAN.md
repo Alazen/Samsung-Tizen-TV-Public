@@ -1,59 +1,65 @@
-# PLAN.md: Stremio Web TV Remote for TizenBrew
+# PLAN.md: Stremio WebApp for Samsung Tizen
 
-## Current status
+## Current branch
 
-Task 3, Emulator Debug Harness Decision, is closed as blocked under Decision B.
+`stremio-webapp-tizen`
 
-Task 4 is active with Task 4a, Task 4b, Task 4c, Task 4d, and Task 4e completed. The final runtime slice closed out Back, Exit, dialog behavior, diagnostics, and source-evidence prep.
+This is now the durable workspace for the Samsung Tizen Stremio WebApp effort. Do not use version-number branch names for normal refactor work. Versioned branches were only useful for TizenBrew cache-busting during real-TV module tests.
 
-Task 5 is the active emulator smoke-validation bridge against `https://web.stremio.com/`. Task 5a is complete. Task 5b remains blocked because the observable live target was `file:///index.html`, not `https://web.stremio.com/`, and the served module did not satisfy the source-freshness contract. Task 5c documented that the disposable harness is not target-equivalent. Task 5d is the narrower active target-equivalent TizenBrew smoke slice. Public module hosting is now proven for the pinned module path, but emulator-side TizenBrew service/debug observability remains blocked.
+## Current direction
 
-Task 6 is the real Samsung TV plus TizenBrew validation gate and final acceptance path. Task 5 never replaces real Samsung TV acceptance.
+The project has two related tracks:
 
-Real-TV install and launch are partially validated: TizenBrew loaded the GitHub module metadata, Stremio Web launched, login was possible through a manual workaround, and video playback can start. Remote-control acceptance is blocked because `Info` and A/B/C/D did not open diagnostics, and video player Play/Pause, seek/skip, player navigation, and Back did not work.
+1. Preserve the existing TizenBrew Stremio Web remote-control module while it remains useful for real-TV testing.
+2. Prepare a standalone Tizen Web App wrapper proof of concept that loads `https://web.stremio.com/` directly and adds a lightweight TV remote/debug layer.
 
-Version `0.1.1` is the active real-TV key-handling fix candidate. It adds fallback key listener paths, Samsung keyCode mapping, Tizen hardware Back handling, richer diagnostics, direct video controls, player Back fallbacks, and expanded login/auth focus candidates. After commit and push, reopen TizenBrewNextGeneration and confirm the module card shows `0.1.1` before retesting.
+The preferred product direction is not a full Stremio UI rebuild yet. The goal is to keep Stremio Web as the UI and improve Samsung TV remote-control usability.
 
-## Public documentation privacy note
+## Current repository structure
 
-Public docs must use placeholders for local checkout paths, Tizen Studio roots, emulator IDs, profile names, debug ports, CDP target IDs, Windows usernames, machine-specific folder names, and signing profile names. Raw local logs should stay outside the repository, or be redacted before commit. Keep commit SHAs and source hashes only when they are needed for source-freshness evidence.
+- `package.json`: root TizenBrew manifest for compatibility with GitHub module installs.
+- `src/tizenbrew/stremio-remote/main.js`: canonical runtime for the Stremio Web remote-control module.
+- `harness/tizenbrew/stremio-remote/`: harness notes and future local-debug helpers.
+- `docs/agent/`: execution protocol, validation policy, repository map, and TaskCard guidance.
+- `docs/validation/`: validation fixtures and execution reports.
+- `tests/`: Node-based manifest, syntax, and DOM-sample checks.
 
-## Active plans
+## TizenBrew install format
 
-- `docs/agent/exec-plans/active/task-04-runtime-core.md`
-- `docs/agent/exec-plans/active/task-05-emulator-stremio-web-smoke-validation.md`
-- `docs/agent/exec-plans/active/task-06-real-tv-tizenbrew-validation.md`
+Use:
 
-## Task 5 status
+```text
+Alazen/Samsung-Tizen-TV-Public@branch-name
+```
 
-- Task 5a: `docs/agent/task-cards/completed/task-05a-prepare-emulator-stremio-smoke-checklist.md` - completed docs-only bridge-readiness checklist, source freshness rules, injection evidence rules, and result rubric routing.
-- Task 5b: `docs/agent/task-cards/blocked/task-05b-run-and-record-emulator-stremio-smoke-validation.md` - blocked because the observable live target remained `file:///index.html`, not `https://web.stremio.com/`, and the served module did not satisfy the freshness contract.
-- Task 5c: `docs/agent/task-cards/active/task-05c-troubleshoot-emulator-launch-target-and-source-freshness.md` - troubleshooting slice documenting that the disposable harness is not target-equivalent and that the correct bridge path is TizenBrew site-modification injection.
-- Task 5d: `docs/agent/task-cards/active/task-05d-run-tizenbrew-emulator-target-equivalent-smoke.md` - active target-equivalent TizenBrew smoke slice; public hosting is proven, but emulator-side service/debug observability remains blocked.
+Do not use `gh/`.
 
-## Task 6 status
+## Active next work
 
-- Task 6: `docs/agent/exec-plans/active/task-06-real-tv-tizenbrew-validation.md` - active real-TV validation gate.
-- Current result: `partial` install and launch, `blocked` remote-control acceptance.
-- Current candidate build: `0.1.1`.
-- Required retest: diagnostics, home navigation, player Play/Pause, seek/skip, player navigation, Back, and login/auth focus if login appears again.
+1. Keep `stremio-webapp-tizen` as the durable refactor branch.
+2. Let the standalone Tizen Web App wrapper proof of concept proceed in its own branch or subdirectory.
+3. Do not mutate old broken test branches such as `stremio-webapp-v032`.
+4. If a new real-TV TizenBrew retest is needed, create a fresh disposable test branch from the current source and document that it exists only for cache-busting.
+5. Keep tests manifest-driven so agents use `package.json.main` instead of hard-coded legacy paths.
 
-## Project goal
+## Validation policy
 
-Build a thin TizenBrew site-modification module that improves Stremio Web remote-control usability on Samsung Tizen TVs without replacing Stremio Web.
+Run the narrowest relevant command first:
 
-## Durable docs
+```bash
+node tests/manifest.test.js
+node tests/syntax.test.js
+node tests/stremio-dom-samples.test.js
+```
 
-- Product scope: `docs/product/scope.md`
-- Acceptance rules: `docs/product/acceptance.md`
-- Runtime architecture: `docs/runtime/`
-- Validation: `docs/agent/validation.md` and `docs/validation/`
-- Local toolchain: `docs/agent/local-toolchain.md`
-- Known risks: `docs/agent/known-risks.md`
-- Public-docs privacy checklist: `docs/agent/public-docs-privacy-checklist.md`
+Use `npm test` when npm is available.
+
+## Privacy and safety
+
+Public docs must use placeholders for local checkout paths, Tizen Studio roots, emulator IDs, profile names, debug ports, CDP target IDs, Windows usernames, machine-specific folder names, and signing profile names.
+
+Do not commit generated packages, build outputs, logs, exact emulator IDs, debug ports, local machine names, signing profiles, credentials, or private stream URLs.
 
 ## Rule for future work
 
-Do not start application behavior changes until the active ExecPlan has been converted into bounded TaskCards with allowed files, validation commands, acceptance criteria, and stop conditions.
-
-Every active agent or subagent task must have a TaskCard in `docs/agent/task-cards/active/`. Completed TaskCards belong in `docs/agent/task-cards/completed/`. Blocked TaskCards belong in `docs/agent/task-cards/blocked/`.
+Every active agent or subagent task must have a bounded TaskCard or clear chat instruction with allowed files, validation commands, acceptance criteria, and stop conditions.
