@@ -14,32 +14,38 @@ If the local npm launcher is unavailable, use the direct Node equivalents:
 
 - `node tests/syntax.test.js`
 - `node tests/manifest.test.js`
+- `node tests/stremio-dom-samples.test.js`
 
 ## TizenBrew TV test-build rule
 
 For any runtime change that should be tested through the TizenBrew GitHub module on a real TV:
 
 1. Bump `package.json` `version` before the TV retest commit.
-2. Keep the TizenBrew development module reference on the branch form:
-   `gh/Alazen/Samsung-Tizen-TV-Public@Stremio-WebApp`.
-3. Commit and push the runtime change and version bump to that branch.
-4. Reopen TizenBrewNextGeneration on the TV.
-5. Confirm the module card shows the new version before retesting.
+2. Use the TizenBrew module reference in this form:
+   `Alazen/Samsung-Tizen-TV-Public@branch-name`.
+3. Do not use the `gh/` prefix.
+4. If TizenBrew cache-busting requires a fresh module, create a disposable test branch from the current source and document it.
+5. Commit and push the runtime change and version bump to that branch.
+6. Remove the old module entry on the TV, add the new branch module entry, and confirm the module card shows the new version before retesting.
 
 If the TV is configured with a pinned commit SHA, pushed branch updates will not be picked up automatically. Use pinned SHAs only for stable release candidates.
+
+## Durable Tizen app branch rule
+
+`stremio-webapp-tizen` is the durable refactor and Tizen app workspace. Do not create new version-number branches for normal harness, wrapper, or app refactor work. Version-number branch names are only for disposable TizenBrew cache-busting test modules.
 
 ## Docs-only or harness-only edits
 
 Use static checks first:
 
 ```bash
-git diff --check -- AGENTS.md PLAN.md docs/agent .agents/skills
+git diff --check -- AGENTS.md PLAN.md README.md docs/agent .agents/skills
 ```
 
 For validation-doc updates, include `docs/validation`:
 
 ```bash
-git diff --check -- PLAN.md docs/agent docs/validation
+git diff --check -- PLAN.md README.md docs/agent docs/validation
 ```
 
 If scripts are available and the TaskCard requires full regression, run the standard command set after static checks.
@@ -84,6 +90,7 @@ Do not commit by default:
 - `target/`
 - `*.exe`
 - `*.zip`
+- `*.wgt`
 - `*.log`
 - caches
 - temporary files
