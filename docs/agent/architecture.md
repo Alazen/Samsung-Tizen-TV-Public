@@ -1,93 +1,52 @@
-# Agent Architecture Router
+# Agent Architecture
 
-Purpose: provide a short architecture entrypoint for implementation agents without duplicating product, runtime, validation, or Tizen documentation.
+Purpose: give agents the architecture boundary without duplicating product docs or Tizen references.
 
-## Product shape
+## Current product shape
 
-This repository builds a thin TizenBrew site-modification module for Stremio Web on Samsung Tizen TVs.
+This repository is the Samsung Tizen Stremio WebApp workspace.
 
-The goal is to improve remote-control usability without replacing Stremio Web.
+Current direction:
 
-## Runtime source
+1. Preserve the existing TizenBrew Stremio Web remote-control module while it remains useful for real-TV testing.
+2. Prepare a standalone Tizen Web App wrapper proof of concept that loads `https://web.stremio.com/` directly and adds a lightweight TV remote/debug layer.
 
-Use these files as the first source-level entrypoints:
+Do not rebuild the full Stremio UI unless a later approved plan explicitly chooses that direction.
 
-- `src/main.js`: runtime bootstrap and behavior entrypoint.
-- `src/styles.css`: optional style injection surface.
-- `package.json`: TizenBrew module metadata, key declarations, and validation scripts.
-- `tests/`: static validation for manifest and syntax.
+## Current source boundaries
 
-## Runtime design docs
+- `package.json`: root TizenBrew manifest for GitHub module installs.
+- `src/tizenbrew/stremio-remote/main.js`: canonical TizenBrew Stremio Web remote-control runtime.
+- `src/tizenbrew/stremio-remote/README.md`: source boundary for the current runtime.
+- `harness/tizenbrew/stremio-remote/`: harness notes and future local-debug helpers; do not duplicate runtime code here.
+- Future standalone Tizen wrapper code must be added under a planned app-specific path after an approved PLAN/TaskCard defines the path.
 
-Read `docs/runtime/` before changing runtime behavior.
-
-Use runtime docs to understand:
-- Remote-control behavior.
-- Key registration.
-- Focus and navigation assumptions.
-- Playback-context behavior.
-- Soft-fail behavior outside Tizen.
-
-## Product docs
-
-Use:
-
-- `docs/product/scope.md`
-- `docs/product/non-goals.md`
-- `docs/product/acceptance.md`
-
-These define what the module is allowed to become and what it must not attempt.
-
-## Validation docs
-
-Use:
-
-- `docs/agent/validation.md`
-- `docs/validation/emulator-validation.md`
-- `docs/validation/real-tv-validation.md`
-
-Validation rule:
-
-- Emulator validation is useful for local confidence.
-- Real Samsung TV plus TizenBrew validation is required for final product acceptance.
-
-## Tizen docs
-
-Start with:
-
-- `docs/tizen/index.md`
-- `docs/tizen/source-map.md`
-
-Do not scan the full vendored Samsung docs tree unless `docs/tizen/source-map.md` points to a specific official source.
-
-## Execution plans and TaskCards
-
-Use:
-
-- `docs/agent/exec-plans/active/`
-- `docs/agent/task-cards/index.md`
-- `docs/agent/task-cards/active/`
-
-Execution rule:
-
-- ExecPlans define sequencing and risk.
-- TaskCards define exact bounded work.
-- Application behavior changes require an active TaskCard with allowed files, validation commands, done conditions, and stop conditions.
-
-## Architecture constraints
+## Runtime constraints
 
 - Vanilla JavaScript only unless explicitly approved.
-- No runtime framework unless explicitly approved.
-- No new runtime dependency unless explicitly approved.
-- Do not edit generated artifacts.
-- Do not commit packaged binaries, logs, or temporary emulator harness outputs.
+- No new runtime framework unless explicitly approved.
+- No new dependency or lockfile change unless explicitly approved.
+- Do not commit packaged binaries, logs, or temporary emulator outputs.
 - Do not rely on unsupported TV privileges or undocumented device behavior.
-- Treat emulator validation as insufficient for final acceptance.
+
+## Tizen-specific rules
+
+- Use `docs/tizen/index.md` and `docs/tizen/source-map.md` for official-doc routing.
+- Do not scan the full vendored Samsung docs tree unless routed by `docs/tizen/source-map.md`.
+- Emulator validation is useful for local confidence but never final product acceptance.
+- Real Samsung TV validation is mandatory for playback and final remote-control behavior.
+
+## TizenBrew compatibility
+
+- TizenBrew module install strings must use `Alazen/Samsung-Tizen-TV-Public@branch-name`.
+- Do not use a `gh/` prefix.
+- Versioned branches are disposable cache-busting test modules only.
+- Durable refactor work stays on `stremio-webapp-tizen` or another explicitly approved stable purpose branch.
 
 ## Stop and ask before
 
-- Adding dependencies.
+- Adding dependencies or scripts.
 - Editing package manager lockfiles.
-- Changing signing, certificates, deployment, permissions, secrets, auth, billing, or production data.
-- Replacing the TizenBrew module approach.
+- Changing signing, certificates, deployment, permissions, secrets, auth, billing, database, migrations, or production data.
+- Replacing the Stremio Web UI strategy.
 - Treating emulator success as real-device acceptance.
