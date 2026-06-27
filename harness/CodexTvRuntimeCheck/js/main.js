@@ -492,6 +492,28 @@
             keyCode: event.keyCode
         };
 
+        if (key === "Back" || event.keyCode === 10009 || event.keyCode === 461) {
+            if (state.mode === "iframe") {
+                var iframe = document.getElementById("app-iframe");
+                if (iframe) {
+                    try {
+                        var win = iframe.contentWindow;
+                        var doc = iframe.contentDocument || (win && win.document);
+                        if (win && doc) {
+                            var currentHash = win.location.hash || "";
+                            if (currentHash && currentHash !== "#" && currentHash !== "#/" && currentHash !== "#/board") {
+                                win.history.back();
+                                event.preventDefault();
+                                return;
+                            }
+                        }
+                    } catch (e) {
+                        // Ignore cross-origin errors
+                    }
+                }
+            }
+        }
+
         if (key === "Info" || event.keyCode === 457 ||
             key === "ColorF0Red" || event.keyCode === 403 ||
             key === "ColorF1Green" || event.keyCode === 404 ||

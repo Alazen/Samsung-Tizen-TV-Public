@@ -598,4 +598,58 @@ console.log('Running standalone Stremio wrapper POC tests...');
     console.log('[PASS] Test 9: Standalone Navigation Adapter passed');
 })();
 
+// Test 10: Back Key Navigation
+(function() {
+    var sb = createSandbox();
+    var api = sb.context.window.__STREMIO_WEB_WRAPPER_POC__;
+
+    // Simulate iframe load completing
+    var iframe = sb.elements['app-iframe'];
+    iframe.onload();
+
+    var backCalled = 0;
+    var preventDefaultCalled = 0;
+
+    // Setup mock contentWindow and contentDocument
+    var mockWin = {
+        location: { hash: '#/detail/movie/tt10375624' },
+        history: {
+            back: function() { backCalled++; }
+        },
+        document: {}
+    };
+
+    sb.context.window.document.getElementById('app-iframe').contentWindow = mockWin;
+    sb.setMockContentDocument(mockWin.document);
+
+    // Trigger keydown on document for Back key (keyCode 10009)
+    var event = {
+        key: 'Back',
+        code: 'XF86Back',
+        keyCode: 10009,
+        preventDefault: function() { preventDefaultCalled++; }
+    };
+
+    sb.keydownListeners.forEach(function(listener) {
+        listener(event);
+    });
+
+    assert.strictEqual(backCalled, 1, 'Should call history.back() for detail view');
+    assert.strictEqual(preventDefaultCalled, 1, 'Should prevent default event behavior');
+
+    // Reset checks and change hash to root home page
+    backCalled = 0;
+    preventDefaultCalled = 0;
+    mockWin.location.hash = '#/';
+
+    sb.keydownListeners.forEach(function(listener) {
+        listener(event);
+    });
+
+    assert.strictEqual(backCalled, 0, 'Should NOT call history.back() for home view');
+    assert.strictEqual(preventDefaultCalled, 0, 'Should NOT prevent default event behavior for home view');
+
+    console.log('[PASS] Test 10: Back Key Navigation passed');
+})();
+
 console.log('All tests passed successfully!');
