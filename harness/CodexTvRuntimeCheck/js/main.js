@@ -328,6 +328,10 @@
         },
         isSidebarElement: function(el) {
             if (!el) return false;
+            try {
+                var rect = el.getBoundingClientRect();
+                if (rect.left > 100) return false;
+            } catch (e) {}
             var href = el.getAttribute('href') || '';
             var text = (el.innerText || '').trim().toLowerCase();
             if (text === 'board' || text === 'discover' || text === 'library' || text === 'calendar' || text === 'addons' || text === 'settings') {
@@ -544,12 +548,12 @@
             }
 
             try {
-                doc.removeEventListener("keydown", handleKeyDown);
+                doc.removeEventListener("keydown", handleKeyDown, true);
             } catch (err) {
                 // Ignore
             }
 
-            doc.addEventListener("keydown", handleKeyDown);
+            doc.addEventListener("keydown", handleKeyDown, true);
             state.iframeListenerStatus = "attached";
             NavigationAdapter.init();
         } catch (e) {
@@ -596,7 +600,7 @@
             });
         }
 
-        window.document.addEventListener("keydown", handleKeyDown);
+        window.document.addEventListener("keydown", handleKeyDown, true);
 
         // Set initial state
         state.diagnosticsOpen = false;
