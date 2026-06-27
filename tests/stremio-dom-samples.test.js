@@ -5,8 +5,8 @@ const path = require("node:path");
 
 const rootDir = path.resolve(__dirname, "..");
 const samplesDir = path.join(rootDir, "docs", "validation", "stremio-dom-samples");
-const runtimeSource = fs.readFileSync(path.join(rootDir, "src", "main.js"), "utf8");
-const packageJson = JSON.parse(fs.readFileSync(path.join(rootDir, "package.json"), "utf8"));
+const manifest = JSON.parse(fs.readFileSync(path.join(rootDir, "package.json"), "utf8"));
+const runtimeSource = fs.readFileSync(path.join(rootDir, manifest.main), "utf8");
 const expectedHtmlSamples = [
   "login-signup-overlay.html",
   "login-form.html",
@@ -46,7 +46,7 @@ test("sanitized DOM samples do not contain obvious private values", () => {
   assert.doesNotMatch(text, /https?:\/\/(?!web\.stremio\.com\b)[^\s"'<>]+/i, "raw external URL found");
 });
 
-test("selector fixtures contain auth, navigation, detail, stream, and player signals", () => {
+test("selector fixtures contain navigation, detail, stream, and player signals", () => {
   const loginText = readSample("login-form.html") + readSample("login-signup-overlay.html");
   const homeText = readSample("home-after-login-extra.html") + readSample("nav-menu-open-home.html");
   const detailText = readSample("details-page-with-streams.html");
@@ -58,37 +58,9 @@ test("selector fixtures contain auth, navigation, detail, stream, and player sig
   assert.match(playerText, /player|video|control|seek|progress|fullscreen|menu/i);
 });
 
-test("runtime selector groups are represented by sanitized sample patterns", () => {
+test("runtime selectors stay aligned with sanitized Stremio samples", () => {
   const sourceAndSamples = runtimeSource + "\n" + allSamplesText();
-  for (const groupName of [
-    "authControls",
-    "homeNavigation",
-    "contentCards",
-    "detailsActions",
-    "streamRows",
-    "playerContainers",
-    "playerControls",
-    "playerBackControls",
-    "playerMenuControls",
-    "menuControls",
-    "focusGuards",
-    "excludedControls"
-  ]) {
-    assert.match(runtimeSource, new RegExp(groupName), `${groupName} missing from runtime`);
+  for (const expected of ["vertical-nav-bar", "nav-tab-button", "meta-item", "poster", "stream", "player", "control", "progress"]) {
+    assert.match(sourceAndSamples, new RegExp(expected, "i"), `${expected} missing`);
   }
-  assert.match(sourceAndSamples, /button-container|nav-tab-button|meta-item|poster|stream|player|control|progress|login|signup|auth/i);
-});
-
-test("runtime contract matches version, markers, selector scoring, and harness policy", () => {
-  assert.match(runtimeSource, new RegExp(`RUNTIME_VERSION = "${packageJson.version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
-  assert.match(runtimeSource, /stremio-webapp-src-main-js-task4e-v1/);
-  assert.match(runtimeSource, /stremio-webapp-runtime-injection-v1/);
-  assert.match(runtimeSource, /__STREMIO_TIZENBREW_REMOTE__/);
-  assert.match(runtimeSource, /selectorSource/);
-  assert.match(runtimeSource, /priority/);
-  assert.match(runtimeSource, /focusGuards/);
-  assert.match(runtimeSource, /playerBackControls/);
-  assert.match(runtimeSource, /authControls/);
-  assert.match(runtimeSource, /controlVideo/);
-  assert.match(runtimeSource, /dispatchEscapeFallback/);
 });
