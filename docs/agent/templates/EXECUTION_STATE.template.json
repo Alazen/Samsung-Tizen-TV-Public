@@ -1,0 +1,29 @@
+{
+  "run_id": "",
+  "mode": "normal",
+  "plan_path": "docs/agent/exec-plans/active/<task-slug>/PLAN.md",
+  "manifest_path": "docs/agent/exec-plans/active/<task-slug>/sequential-manifest.md",
+  "report_path": "docs/agent/exec-plans/active/<task-slug>/EXECUTION_REPORT.md",
+  "goal_mode": {
+    "enabled": false,
+    "parent_goal": "",
+    "policy": "",
+    "status": "inactive"
+  },
+  "active_taskcard": "",
+  "next_action": "",
+  "stop_reason": "none",
+  "worktree_state": "unknown",
+  "taskcards": {
+    "pending": [],
+    "active": [],
+    "blocked": [],
+    "completed": [],
+    "cancelled": []
+  },
+  "changed_files": [],
+  "validation_results": [],
+  "risks": [],
+  "blockers": [],
+  "decisions": []
+}
