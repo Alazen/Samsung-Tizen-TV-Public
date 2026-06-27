@@ -20,7 +20,12 @@
         sameOrigin: null,
         mediaSupport: null,
         diagnosticsOpen: false,
-        iframeListenerStatus: "unattached"
+        iframeListenerStatus: "unattached",
+        navigationAdapter: {
+            status: "inactive",
+            activeElement: null,
+            candidateCount: 0
+        }
     };
 
     function redactUrl(url) {
@@ -138,6 +143,43 @@
         state.wrapperUrl = redactUrl(window.location.href);
         state.sameOrigin = inspectIframe();
         state.mediaSupport = checkMediaSupport();
+
+        // Update navigation adapter diagnostics
+        if (typeof NavigationAdapter !== "undefined") {
+            var doc = NavigationAdapter.getIframeDoc();
+            if (doc) {
+                try {
+                    var activeEl = doc.activeElement;
+                    var activeInfo = null;
+                    if (activeEl && activeEl !== doc.body) {
+                        activeInfo = {
+                            tagName: activeEl.tagName,
+                            text: (activeEl.innerText || "").substring(0, 30).trim(),
+                            className: activeEl.className || "",
+                            isSidebar: NavigationAdapter.isSidebarElement(activeEl)
+                        };
+                    }
+                    var cands = NavigationAdapter.getFocusableElements(doc);
+                    state.navigationAdapter = {
+                        status: NavigationAdapter.enabled ? "enabled" : "disabled",
+                        activeElement: activeInfo,
+                        candidateCount: cands.length
+                    };
+                } catch (e) {
+                    state.navigationAdapter = {
+                        status: "error: " + (e && e.message ? e.message : String(e)),
+                        activeElement: null,
+                        candidateCount: 0
+                    };
+                }
+            } else {
+                state.navigationAdapter = {
+                    status: "no-document-access",
+                    activeElement: null,
+                    candidateCount: 0
+                };
+            }
+        }
         return state;
     }
 
@@ -213,6 +255,9 @@
                 loadingStatus.textContent = "Loading iframe...";
             }
             state.iframeLoadState = "loading";
+            if (typeof NavigationAdapter !== "undefined") {
+                NavigationAdapter.destroy();
+            }
             var iframe = document.getElementById("app-iframe");
             if (iframe) {
                 iframe.src = TARGET_URL;
@@ -246,6 +291,199 @@
         }
     }
 
+    var NavigationAdapter = {
+        enabled: true,
+        init: function() {
+            this.enabled = true;
+        },
+        destroy: function() {
+            this.enabled = false;
+        },
+        getIframeDoc: function() {
+            var iframe = document.getElementById("app-iframe");
+            if (!iframe) return null;
+            try {
+                return iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+            } catch (e) {
+                return null;
+            }
+        },
+        getFocusableElements: function(doc) {
+            if (!doc) return [];
+            var selector = 'a[href], button, [tabindex="0"]';
+            try {
+                var els = doc.querySelectorAll(selector);
+                var result = [];
+                for (var i = 0; i < els.length; i++) {
+                    var el = els[i];
+                    var rect = el.getBoundingClientRect();
+                    if (rect.width > 0 && rect.height > 0) {
+                        result.push(el);
+                    }
+                }
+                return result;
+            } catch (e) {
+                return [];
+            }
+        },
+        isSidebarElement: function(el) {
+            if (!el) return false;
+            var href = el.getAttribute('href') || '';
+            var text = (el.innerText || '').trim().toLowerCase();
+            if (text === 'board' || text === 'discover' || text === 'library' || text === 'calendar' || text === 'addons' || text === 'settings') {
+                return true;
+            }
+            if (href === '#/' || href === '/' || href.indexOf('#/discover') !== -1 || href.indexOf('#/library') !== -1 || href.indexOf('#/calendar') !== -1 || href.indexOf('#/addons') !== -1 || href.indexOf('#/settings') !== -1) {
+                var parent = el.parentElement;
+                while (parent) {
+                    var className = (parent.className || '').toLowerCase();
+                    if (className.indexOf('sidebar') !== -1 || className.indexOf('menu') !== -1 || className.indexOf('nav') !== -1) {
+                        return true;
+                    }
+                    parent = parent.parentElement;
+                }
+                if (href === '#/' || href === '#/discover' || href === '#/library' || href === '#/calendar' || href === '#/addons' || href === '#/settings') {
+                    return true;
+                }
+            }
+            return false;
+        },
+        handleKey: function(event) {
+            if (!this.enabled) return false;
+
+            var key = event.key || event.code;
+            var keyCode = event.keyCode;
+
+            if (keyCode !== 37 && keyCode !== 38 && keyCode !== 39 && keyCode !== 40 && keyCode !== 13) {
+                return false;
+            }
+
+            var doc = this.getIframeDoc();
+            if (!doc) return false;
+
+            var activeEl = doc.activeElement;
+
+            if (keyCode === 13) {
+                if (activeEl && activeEl !== doc.body && typeof activeEl.click === 'function') {
+                    activeEl.click();
+                    event.preventDefault();
+                    return true;
+                }
+                return false;
+            }
+
+            var candidates = this.getFocusableElements(doc);
+            if (candidates.length === 0) return false;
+
+            if (!activeEl || activeEl === doc.body) {
+                var first = candidates[0];
+                if (first && typeof first.focus === 'function') {
+                    first.focus();
+                    event.preventDefault();
+                    return true;
+                }
+                return false;
+            }
+
+            var activeRect = activeEl.getBoundingClientRect();
+            var isCurrentSidebar = this.isSidebarElement(activeEl);
+
+            if (keyCode === 37) { // Left
+                if (!isCurrentSidebar) {
+                    var sidebarCandidates = [];
+                    for (var i = 0; i < candidates.length; i++) {
+                        if (this.isSidebarElement(candidates[i])) {
+                            sidebarCandidates.push(candidates[i]);
+                        }
+                    }
+                    if (sidebarCandidates.length > 0) {
+                        var bestSidebar = this.findBestSpatial(activeRect, sidebarCandidates, keyCode);
+                        if (bestSidebar) {
+                            bestSidebar.focus();
+                            event.preventDefault();
+                            return true;
+                        }
+                    }
+                }
+            } else if (keyCode === 39) { // Right
+                if (isCurrentSidebar) {
+                    var contentCandidates = [];
+                    for (var i = 0; i < candidates.length; i++) {
+                        if (!this.isSidebarElement(candidates[i])) {
+                            contentCandidates.push(candidates[i]);
+                        }
+                    }
+                    if (contentCandidates.length > 0) {
+                        var bestContent = this.findBestSpatial(activeRect, contentCandidates, keyCode);
+                        if (bestContent) {
+                            bestContent.focus();
+                            event.preventDefault();
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            var best = this.findBestSpatial(activeRect, candidates, keyCode);
+            if (best && typeof best.focus === 'function') {
+                best.focus();
+                event.preventDefault();
+                return true;
+            }
+
+            return false;
+        },
+        findBestSpatial: function(activeRect, candidates, keyCode) {
+            var activeCenterX = activeRect.left + activeRect.width / 2;
+            var activeCenterY = activeRect.top + activeRect.height / 2;
+            var bestCandidate = null;
+            var minScore = Infinity;
+
+            for (var i = 0; i < candidates.length; i++) {
+                var cand = candidates[i];
+                var rect = cand.getBoundingClientRect();
+                var centerX = rect.left + rect.width / 2;
+                var centerY = rect.top + rect.height / 2;
+
+                if (rect.left === activeRect.left && rect.top === activeRect.top && rect.width === activeRect.width && rect.height === activeRect.height) {
+                    continue;
+                }
+
+                var isValidDirection = false;
+                var primaryDist = 0;
+                var secondaryDist = 0;
+
+                if (keyCode === 37) { // Left
+                    isValidDirection = (centerX < activeCenterX);
+                    primaryDist = activeCenterX - centerX;
+                    secondaryDist = Math.abs(centerY - activeCenterY);
+                } else if (keyCode === 39) { // Right
+                    isValidDirection = (centerX > activeCenterX);
+                    primaryDist = centerX - activeCenterX;
+                    secondaryDist = Math.abs(centerY - activeCenterY);
+                } else if (keyCode === 38) { // Up
+                    isValidDirection = (centerY < activeCenterY);
+                    primaryDist = activeCenterY - centerY;
+                    secondaryDist = Math.abs(centerX - activeCenterX);
+                } else if (keyCode === 40) { // Down
+                    isValidDirection = (centerY > activeCenterY);
+                    primaryDist = centerY - activeCenterY;
+                    secondaryDist = Math.abs(centerX - activeCenterX);
+                }
+
+                if (isValidDirection) {
+                    var score = primaryDist + 2 * secondaryDist;
+                    if (score < minScore) {
+                        minScore = score;
+                        bestCandidate = cand;
+                    }
+                }
+            }
+
+            return bestCandidate;
+        }
+    };
+
     function handleKeyDown(event) {
         var key = event.key || event.code;
         state.lastKey = {
@@ -261,6 +499,11 @@
             key === "ColorF3Blue" || event.keyCode === 406 ||
             key === "1" || key === "Digit1" || event.keyCode === 49) {
             toggleDiagnostics();
+            return;
+        }
+
+        if (!state.diagnosticsOpen) {
+            NavigationAdapter.handleKey(event);
         }
     }
 
@@ -286,6 +529,7 @@
 
             doc.addEventListener("keydown", handleKeyDown);
             state.iframeListenerStatus = "attached";
+            NavigationAdapter.init();
         } catch (e) {
             state.iframeListenerStatus = "failed: " + (e && e.message ? e.message : String(e));
         }

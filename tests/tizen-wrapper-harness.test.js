@@ -31,7 +31,11 @@ function createSandbox() {
         },
         getElementsByTagName: function(tag) {
             return [];
-        }
+        },
+        querySelectorAll: function(sel) {
+            return [];
+        },
+        activeElement: null
     };
 
     var mockContentDocument = mockIframeDoc;
@@ -234,7 +238,8 @@ function createSandbox() {
             var event = {
                 key: key,
                 code: code,
-                keyCode: keyCode
+                keyCode: keyCode,
+                preventDefault: function() {}
             };
             keydownListeners.forEach(function(listener) {
                 listener(event);
@@ -244,7 +249,8 @@ function createSandbox() {
             var event = {
                 key: key,
                 code: code,
-                keyCode: keyCode
+                keyCode: keyCode,
+                preventDefault: function() {}
             };
             iframeKeydownListeners.forEach(function(listener) {
                 listener(event);
@@ -447,14 +453,14 @@ console.log('Running standalone Stremio wrapper POC tests...');
     var initialIframeAccess = sb.getIframeAccessCount();
     var initialLogRender = sb.getLogRenderCount();
 
-    // 1. Ordinary key (e.g. ArrowLeft) inside the iframe should update lastKey, but NOT inspect DOM or render
-    sb.triggerIframeKeydown('ArrowLeft', 'ArrowLeft', 37);
+    // 1. Ordinary key (e.g. KeyA) inside the iframe should update lastKey, but NOT inspect DOM or render
+    sb.triggerIframeKeydown('a', 'KeyA', 65);
     assert.strictEqual(sb.getIframeAccessCount(), initialIframeAccess, 'Ordinary iframe keydown must not trigger iframe inspection');
     assert.strictEqual(sb.getLogRenderCount(), initialLogRender, 'Ordinary iframe keydown must not trigger diagnostics render');
 
     var stateKey = api.getState();
     assert.strictEqual(stateKey.diagnosticsOpen, false, 'Ordinary iframe key must not toggle diagnostics');
-    assert.strictEqual(stateKey.lastKey.key, 'ArrowLeft');
+    assert.strictEqual(stateKey.lastKey.key, 'a');
 
     // 2. Info key inside the iframe should toggle diagnostics to open and start interval timer
     sb.triggerIframeKeydown('Info', 'Info', 457);
@@ -497,6 +503,99 @@ console.log('Running standalone Stremio wrapper POC tests...');
     assert.ok(stateFailed.iframeListenerStatus.indexOf('failed') !== -1, 'Status should capture failure details');
 
     console.log('[PASS] Test 8: Iframe key listener attachment and key forwarding passed');
+})();
+
+// Test 9: Standalone Navigation Adapter
+(function() {
+    var sb = createSandbox();
+    var api = sb.context.window.__STREMIO_WEB_WRAPPER_POC__;
+
+    // Simulate iframe load completing successfully to attach listener
+    var iframe = sb.elements['app-iframe'];
+    iframe.onload();
+
+    var focusCallCount = 0;
+    var clickCallCount = 0;
+
+    // Define mock focusable elements
+    var mockSidebarEl = {
+        tagName: 'A',
+        innerText: 'Discover',
+        className: 'menu-item-class',
+        getAttribute: function(name) { if (name === 'href') return '#/discover'; return null; },
+        getBoundingClientRect: function() { return { left: 10, top: 100, width: 100, height: 50 }; },
+        focus: function() { this.focused = true; focusCallCount++; },
+        click: function() { this.clicked = true; clickCallCount++; }
+    };
+
+    var mockCardEl = {
+        tagName: 'A',
+        innerText: 'Toy Story 4',
+        className: 'card-class',
+        getAttribute: function(name) { if (name === 'href') return '#/detail/movie/tt1979376/tt1979376'; return null; },
+        getBoundingClientRect: function() { return { left: 200, top: 100, width: 150, height: 150 }; },
+        focus: function() { this.focused = true; focusCallCount++; },
+        click: function() { this.clicked = true; clickCallCount++; }
+    };
+
+    var candidates = [mockSidebarEl, mockCardEl];
+
+    // Override querySelectorAll and activeElement in sandbox context
+    sb.context.window.document.getElementById('app-iframe').contentWindow.document.querySelectorAll = function(sel) {
+        return candidates;
+    };
+
+    // Test 9.1: Default focus behavior (activeElement is body or null)
+    // Down Arrow should focus the first candidate
+    sb.context.window.document.getElementById('app-iframe').contentWindow.document.activeElement = null;
+    sb.triggerIframeKeydown('ArrowDown', 'ArrowDown', 40);
+    assert.ok(mockSidebarEl.focused, 'Default focus should fallback to first candidate');
+    assert.strictEqual(focusCallCount, 1);
+
+    // Test 9.2: Spatial navigation (Move Right from sidebar to card)
+    focusCallCount = 0;
+    mockCardEl.focused = false;
+    sb.context.window.document.getElementById('app-iframe').contentWindow.document.activeElement = mockSidebarEl;
+    sb.triggerIframeKeydown('ArrowRight', 'ArrowRight', 39);
+    assert.ok(mockCardEl.focused, 'ArrowRight from sidebar element should move focus to content card');
+    assert.strictEqual(focusCallCount, 1);
+
+    // Test 9.3: Spatial navigation (Move Left from card to sidebar)
+    focusCallCount = 0;
+    mockSidebarEl.focused = false;
+    sb.context.window.document.getElementById('app-iframe').contentWindow.document.activeElement = mockCardEl;
+    sb.triggerIframeKeydown('ArrowLeft', 'ArrowLeft', 37);
+    assert.ok(mockSidebarEl.focused, 'ArrowLeft from card should move focus to sidebar');
+    assert.strictEqual(focusCallCount, 1);
+
+    // Test 9.4: Enter/OK key activates (clicks) the focused element
+    clickCallCount = 0;
+    sb.context.window.document.getElementById('app-iframe').contentWindow.document.activeElement = mockCardEl;
+    sb.triggerIframeKeydown('Enter', 'Enter', 13);
+    assert.ok(mockCardEl.clicked, 'Enter key should click the active focused element');
+    assert.strictEqual(clickCallCount, 1);
+
+    // Test 9.5: Empty selector fallback (should not crash and should return false/passthrough)
+    candidates = [];
+    sb.context.window.document.getElementById('app-iframe').contentWindow.document.activeElement = null;
+    var state = api.getState();
+    assert.strictEqual(state.navigationAdapter.candidateCount, 0, 'Candidate count should be 0');
+
+    // Triggering ArrowDown when no candidates are found
+    sb.triggerIframeKeydown('ArrowDown', 'ArrowDown', 40);
+
+    // Test 9.6: Cross-origin fallback (when contentDocument throws SecurityError, getState logs status)
+    Object.defineProperty(sb.elements['app-iframe'], 'contentDocument', {
+        get: function() {
+            throw new Error('SecurityError: Permission denied to access cross-origin frame');
+        },
+        configurable: true
+    });
+
+    var stateCO = api.getState();
+    assert.strictEqual(stateCO.navigationAdapter.status, 'no-document-access', 'Cross-origin should report no-document-access status');
+
+    console.log('[PASS] Test 9: Standalone Navigation Adapter passed');
 })();
 
 console.log('All tests passed successfully!');

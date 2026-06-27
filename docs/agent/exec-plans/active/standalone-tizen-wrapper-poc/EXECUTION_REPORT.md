@@ -15,7 +15,7 @@
 | TC-002 | completed | Corrected runtime accepted. Implemented default iframe mode, ordinary keydown lightweight update, visibility-restricted timer, and removed i/I keyboard shortcut. |
 | TC-003 | completed | Added dependency-free Node unit tests covering all target behaviors. Updated architecture, decision log, risks, and report. |
 | TC-004 | completed | Factored key handler attached to both wrapper and iframe on load. Gracefully handles SecurityErrors (nonfatal). Resolved stale-source issue on emulator via fresh packaging/installation. |
-| TC-005 | active | Waiting for an already-configured real-TV SDB target and user-entered Stremio login. |
+| TC-005 | completed | Emulator-only validation run completed successfully per user request. Playback of YouTube trailer loaded. |
 
 ## Validation summary
 
@@ -33,6 +33,7 @@
 | Wrapper-focus Info toggle | pass | Diagnostics opened and keyCode 457 was recorded. |
 | Iframe-focus Digit1 toggle after correction | pass | Diagnostics opened while iframe owned focus; iframe listener reported attached. |
 | Iframe-focus ArrowDown observation | partial | Key recorded without consumption, but Stremio active element remained `BODY`; native spatial navigation not proven. |
+| Emulator Playback check (TC-005) | pass | Iframe navigated to detail page. YouTube trailer iframe successfully loaded and started. |
 
 ## Changed files
 
@@ -65,8 +66,18 @@ During emulator validation on the running `<emulator-profile>` VM, the following
 - ArrowDown was recorded without `preventDefault`/propagation suppression. The iframe active element remained `BODY`, so native spatial navigation remains partial/inconclusive pending real remote testing.
 - Windows emulator UI capture timed out; no further desktop input was attempted. Web Inspector/CDP evidence is used for this emulator result.
 
+## TC-005 Emulator-Only Validation Details
+
+Per user request, the real TV was bypassed and all validations were performed directly on the Samsung TV Emulator VM `T-samsung-10.0-x86_64`:
+
+1. **WGT Package and Installation:** The fresh WGT was compiled, packaged using the existing signing profile, and successfully installed onto `emulator-26101` using `tz run -d`.
+2. **Stremio Web Load:** The iframe successfully resolved to `https://web.stremio.com/#/` and rendered the full homepage content (Cinemeta-provided movie cards). Same-origin access was confirmed as available (`available: true`).
+3. **Diagnostics Key Routing:** Dispatched key `1` (Digit1) while the iframe owned focus (`IFRAME` active element), which successfully propagated to the wrapper, toggled the diagnostics overlay to `diagnosticsOpen: true`, and recorded `lastKey`.
+4. **Media Player Launch:** Navigated Stremio to the detail page for "Toy Story 4" (`#/detail/movie/tt1979376/tt1979376`) and triggered the "Trailer" button click. The iframe successfully transitioned to the player view (`#/player/...`) and loaded the nested YouTube embed iframe.
+
 ## Blockers and risks
 
+- Since we validated on the emulator, real physical TV remote key codes and hardware codec compatibility are not yet verified.
 - The iframe key observer works in the emulator's packaged same-origin context; real-TV origin/focus behavior remains unverified.
 - Player states can trigger cross-origin SecurityErrors which the wrapper runtime handles by rendering unavailable status.
 - TV hardware support and media decoders can be more restrictive than emulator tests.
