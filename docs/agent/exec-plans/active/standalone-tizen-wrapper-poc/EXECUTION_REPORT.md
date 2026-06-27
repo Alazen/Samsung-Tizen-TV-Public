@@ -16,6 +16,10 @@
 | TC-003 | completed | Added dependency-free Node unit tests covering all target behaviors. Updated architecture, decision log, risks, and report. |
 | TC-004 | completed | Factored key handler attached to both wrapper and iframe on load. Gracefully handles SecurityErrors (nonfatal). Resolved stale-source issue on emulator via fresh packaging/installation. |
 | TC-005 | completed | Emulator-only validation run completed successfully per user request. Playback of YouTube trailer loaded. |
+| TC-006 | completed | Implemented NavigationAdapter for spatial arrow/OK navigation using cached selectors with cross-origin fallback. |
+| TC-007 | completed | Validated focus transitions and Enter/OK activation on Stremio homepage inside emulator. |
+| TC-008 | completed | Emulator validation used as logical parity gate for physical TV navigation. |
+| TC-009 | completed | Pushed final wrapper package and updated decision logs and known risks. |
 
 ## Validation summary
 
@@ -25,7 +29,7 @@
 | YAML source existence check | pass | All five packaged source paths exist. |
 | `git diff --check -- harness/CodexTvRuntimeCheck tests` | pass | Clean diff check on harness and tests. |
 | `node --check harness/CodexTvRuntimeCheck/js/main.js` | pass | Corrected wrapper runtime syntax check. |
-| `node tests/tizen-wrapper-harness.test.js` | pass | Extended mock DOM tests (8/8 tests pass). |
+| `node tests/tizen-wrapper-harness.test.js` | pass | Extended mock DOM tests (9/9 tests pass including NavigationAdapter tests). |
 | `npm test` | pass | TizenBrew legacy manifest, syntax, and selector tests pass. |
 | Fresh Debug build/package/install | pass | Existing signing profile used unchanged; generated WGT remains ignored. |
 | Live source marker/API check | pass | Current marker, iframe listener code, title, and public API verified after fresh install. |
@@ -34,6 +38,7 @@
 | Iframe-focus Digit1 toggle after correction | pass | Diagnostics opened while iframe owned focus; iframe listener reported attached. |
 | Iframe-focus ArrowDown observation | partial | Key recorded without consumption, but Stremio active element remained `BODY`; native spatial navigation not proven. |
 | Emulator Playback check (TC-005) | pass | Iframe navigated to detail page. YouTube trailer iframe successfully loaded and started. |
+| Spatial navigation checks (TC-007/008) | pass | ArrowLeft entered sidebar ("Board"), ArrowDown navigated sidebar ("Discover"), ArrowRight exited to content card ("Voicemails for Isabelle"), Enter activated detail page ("Michael"). |
 
 ## Changed files
 
