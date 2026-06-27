@@ -95,3 +95,25 @@ $env:Path = "<tizen-studio-root>\tools;$env:Path"
 - Codex sandbox commands can run as `<windows-identity>`, while the real desktop user context may be different. Permission tests in the sandbox may not match the real Tizen CLI runtime context.
 - Repair used in the real user context: rotate/recreate the CLI log and ensure writable ACLs for the user context.
 - When this error reappears, verify the command under the same Windows identity that owns the Tizen Studio data path before changing repository files.
+
+## Bypassing Session 0 Isolation for GUI Windows
+
+- Issue: When the editor server or agent daemon runs in Windows Session 0 (as a background service), GUI applications (like the Tizen Emulator or Chrome DevTools browser tabs launched via `Start-Process` or CLI commands) run invisibly in the background.
+- Workaround: Use the Windows Task Scheduler from the shell to run the GUI commands in the interactive user session (Session 1+).
+- Script pattern to launch a visible Emulator:
+  ```powershell
+  $action = New-ScheduledTaskAction -Execute "E:\tizen-studio\tools\emulator\bin\em-cli.bat" -Argument "launch -n T-samsung-10.0-x86_64"
+  $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType Interactive
+  Register-ScheduledTask -TaskName "LaunchTizenEmulator" -Action $action -Principal $principal
+  Start-ScheduledTask -TaskName "LaunchTizenEmulator"
+  ```
+  *(Note: Keep the task registered until done with the emulator to prevent Windows from killing the child process, then unregister it when finished).*
+- Script pattern to launch a visible DevTools browser window:
+  ```powershell
+  $action = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c start http://localhost:<port>/devtools/inspector.html?ws=localhost:<port>/devtools/page/<id>"
+  $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType Interactive
+  Register-ScheduledTask -TaskName "LaunchTizenDevTools" -Action $action -Principal $principal
+  Start-ScheduledTask -TaskName "LaunchTizenDevTools"
+  Start-Sleep -Seconds 3
+  Unregister-ScheduledTask -TaskName "LaunchTizenDevTools" -Confirm:$false
+  ```
