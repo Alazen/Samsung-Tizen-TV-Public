@@ -14,6 +14,7 @@ function createSandbox() {
     var setIntervalCalls = 0;
     var mockIntervals = {};
     var activeIntervalId = null;
+    var mockTimeouts = [];
 
     var iframeAccessCount = 0;
     var logRenderCount = 0;
@@ -176,7 +177,8 @@ function createSandbox() {
             delete mockIntervals[id];
         },
         setTimeout: function(cb, delay) {
-            return setTimeout(cb, delay);
+            mockTimeouts.push({ cb: cb, delay: delay });
+            return mockTimeouts.length;
         },
         MediaSource: {
             isTypeSupported: function(mime) {
@@ -233,6 +235,11 @@ function createSandbox() {
         getActiveIntervalId: function() { return activeIntervalId; },
         getIframeAccessCount: function() { return iframeAccessCount; },
         getLogRenderCount: function() { return logRenderCount; },
+        flushTimeouts: function() {
+            var pending = mockTimeouts.slice();
+            mockTimeouts.length = 0;
+            pending.forEach(function(timeout) { timeout.cb(); });
+        },
         setMockContentDocument: function(doc) { mockContentDocument = doc; },
         triggerKeydown: function(key, code, keyCode) {
             var event = {
@@ -250,11 +257,14 @@ function createSandbox() {
                 key: key,
                 code: code,
                 keyCode: keyCode,
-                preventDefault: function() {}
+                preventDefault: function() { this.defaultPrevented = true; },
+                stopPropagation: function() { this.propagationStopped = true; },
+                stopImmediatePropagation: function() { this.immediatePropagationStopped = true; }
             };
             iframeKeydownListeners.forEach(function(listener) {
                 listener(event);
             });
+            return event;
         }
     };
 }
@@ -509,82 +519,206 @@ console.log('Running standalone Stremio wrapper POC tests...');
 (function() {
     var sb = createSandbox();
     var api = sb.context.window.__STREMIO_WEB_WRAPPER_POC__;
-
-    // Simulate iframe load completing successfully to attach listener
     var iframe = sb.elements['app-iframe'];
     iframe.onload();
+    var doc = iframe.contentWindow.document;
+    iframe.contentWindow.location = { hash: '#/discover' };
 
-    var focusCallCount = 0;
-    var clickCallCount = 0;
+    function makeElement(tagName, text, attrs, rect) {
+        attrs = attrs || {};
+        return {
+            tagName: tagName,
+            innerText: text || '',
+            textContent: text || '',
+            className: attrs.className || '',
+            disabled: false,
+            parentElement: attrs.parentElement || null,
+            getAttribute: function(name) {
+                if (name === 'class') return this.className;
+                return Object.prototype.hasOwnProperty.call(attrs, name) ? attrs[name] : null;
+            },
+            getBoundingClientRect: function() { return rect; },
+            focus: function() { this.focused = true; this.focusCount = (this.focusCount || 0) + 1; },
+            click: function() { this.clicked = true; this.clickCount = (this.clickCount || 0) + 1; }
+        };
+    }
 
-    // Define mock focusable elements
-    var mockSidebarEl = {
-        tagName: 'A',
-        innerText: 'Discover',
-        className: 'menu-item-class',
-        getAttribute: function(name) { if (name === 'href') return '#/discover'; return null; },
-        getBoundingClientRect: function() { return { left: 10, top: 100, width: 100, height: 50 }; },
-        focus: function() { this.focused = true; focusCallCount++; },
-        click: function() { this.clicked = true; clickCallCount++; }
-    };
-
-    var mockCardEl = {
-        tagName: 'A',
-        innerText: 'Toy Story 4',
-        className: 'card-class',
-        getAttribute: function(name) { if (name === 'href') return '#/detail/movie/tt1979376/tt1979376'; return null; },
-        getBoundingClientRect: function() { return { left: 200, top: 100, width: 150, height: 150 }; },
-        focus: function() { this.focused = true; focusCallCount++; },
-        click: function() { this.clicked = true; clickCallCount++; }
-    };
-
-    var candidates = [mockSidebarEl, mockCardEl];
-
-    // Override querySelectorAll and activeElement in sandbox context
-    sb.context.window.document.getElementById('app-iframe').contentWindow.document.querySelectorAll = function(sel) {
+    var sidebarDuplicate = makeElement('A', 'Discover', { href: '#/discover' },
+        { left: 10, top: 100, width: 100, height: 50 });
+    var sidebarSelected = makeElement('A', 'Discover', { href: '#/discover', 'aria-current': 'page' },
+        { left: 10, top: 160, width: 100, height: 50 });
+    var sidebarNext = makeElement('A', 'Library', { href: '#/library' },
+        { left: 10, top: 220, width: 100, height: 50 });
+    var firstCard = makeElement('A', 'Toy Story 4', {
+        href: '#/detail/movie/tt1979376/tt1979376', 'aria-selected': 'true'
+    }, { left: 200, top: 100, width: 150, height: 150 });
+    var secondCard = makeElement('A', 'Second card', {
+        href: '#/detail/movie/tt0000002/tt0000002'
+    }, { left: 380, top: 100, width: 150, height: 150 });
+    var thirdCard = makeElement('A', 'Third card', {
+        href: '#/detail/movie/tt0000003/tt0000003'
+    }, { left: 200, top: 280, width: 150, height: 150 });
+    var fourthCard = makeElement('A', 'Fourth card', {
+        href: '#/detail/movie/tt0000004/tt0000004'
+    }, { left: 380, top: 280, width: 150, height: 150 });
+    var candidates = [sidebarDuplicate, sidebarSelected, sidebarNext,
+        firstCard, secondCard, thirdCard, fourthCard];
+    doc.querySelectorAll = function() {
         return candidates;
     };
 
-    // Test 9.1: Default focus behavior (activeElement is body or null)
-    // Down Arrow should focus the first candidate
-    sb.context.window.document.getElementById('app-iframe').contentWindow.document.activeElement = null;
-    sb.triggerIframeKeydown('ArrowDown', 'ArrowDown', 40);
-    assert.ok(mockSidebarEl.focused, 'Default focus should fallback to first candidate');
-    assert.strictEqual(focusCallCount, 1);
+    // First-column Left is consumed and focuses the selected current-route sidebar after deferral.
+    doc.activeElement = firstCard;
+    var leftEvent = sb.triggerIframeKeydown('ArrowLeft', 'ArrowLeft', 37);
+    assert.strictEqual(sidebarSelected.focusCount, undefined, 'Sidebar focus must be deferred');
+    assert.ok(leftEvent.defaultPrevented && leftEvent.propagationStopped && leftEvent.immediatePropagationStopped,
+        'Handled Left must be fully consumed');
+    sb.flushTimeouts();
+    assert.strictEqual(sidebarSelected.focusCount, 1, 'Current selected Discover duplicate should receive focus');
+    assert.strictEqual(api.getState().lastNavigation, 'discover-first-column-to-current-sidebar');
 
-    // Test 9.2: Spatial navigation (Move Right from sidebar to card)
-    focusCallCount = 0;
-    mockCardEl.focused = false;
-    sb.context.window.document.getElementById('app-iframe').contentWindow.document.activeElement = mockSidebarEl;
-    sb.triggerIframeKeydown('ArrowRight', 'ArrowRight', 39);
-    assert.ok(mockCardEl.focused, 'ArrowRight from sidebar element should move focus to content card');
-    assert.strictEqual(focusCallCount, 1);
+    // Left within a card row moves spatially without jumping to the sidebar.
+    doc.activeElement = secondCard;
+    var secondLeftEvent = sb.triggerIframeKeydown('ArrowLeft', 'ArrowLeft', 37);
+    assert.ok(secondLeftEvent.defaultPrevented, 'Card Left should be handled');
+    assert.strictEqual(firstCard.focusCount, 1, 'Card Left should focus the previous card');
+    assert.strictEqual(sidebarSelected.focusCount, 1, 'Non-first-column Left must not focus sidebar');
 
-    // Test 9.3: Spatial navigation (Move Left from card to sidebar)
-    focusCallCount = 0;
-    mockSidebarEl.focused = false;
-    sb.context.window.document.getElementById('app-iframe').contentWindow.document.activeElement = mockCardEl;
+    // BODY/missing focus resolves through the visible selected content card.
+    doc.activeElement = null;
+    var bodyLeftEvent = sb.triggerIframeKeydown('ArrowLeft', 'ArrowLeft', 37);
+    assert.ok(bodyLeftEvent.defaultPrevented, 'Selected first-column card should bridge when BODY owns focus');
+    sb.flushTimeouts();
+    assert.strictEqual(sidebarSelected.focusCount, 2);
+
+    doc.activeElement = null;
+    var firstCardFocusBeforeBodyDown = firstCard.focusCount;
+    var bodyDownEvent = sb.triggerIframeKeydown('ArrowDown', 'ArrowDown', 40);
+    assert.strictEqual(bodyDownEvent.defaultPrevented, undefined, 'BODY ArrowDown must remain native');
+    assert.strictEqual(firstCard.focusCount, firstCardFocusBeforeBodyDown,
+        'BODY ArrowDown must not force selected-card focus');
+
+    // An unmatched route falls back to the visible selected/current sidebar, never an arbitrary item.
+    iframe.contentWindow.location.hash = '#/detail/movie/tt1979376';
+    doc.activeElement = firstCard;
     sb.triggerIframeKeydown('ArrowLeft', 'ArrowLeft', 37);
-    assert.ok(mockSidebarEl.focused, 'ArrowLeft from card should move focus to sidebar');
-    assert.strictEqual(focusCallCount, 1);
+    sb.flushTimeouts();
+    assert.strictEqual(sidebarSelected.focusCount, 3, 'Unmatched route should use selected sidebar fallback');
+    assert.strictEqual(sidebarDuplicate.focusCount, undefined, 'Unmatched route must not use arbitrary first sidebar');
+    iframe.contentWindow.location.hash = '#/discover';
 
-    // Test 9.4: Enter/OK key activates (clicks) the focused element
-    clickCallCount = 0;
-    sb.context.window.document.getElementById('app-iframe').contentWindow.document.activeElement = mockCardEl;
+    // Packaged-app sidebar directions are supplied by the adapter.
+    doc.activeElement = sidebarSelected;
+    var sidebarDown = sb.triggerIframeKeydown('ArrowDown', 'ArrowDown', 40);
+    assert.ok(sidebarDown.defaultPrevented, 'Sidebar Down must be handled');
+    assert.strictEqual(sidebarNext.focusCount, 1, 'Sidebar Down should focus the next item');
+    doc.activeElement = sidebarNext;
+    var sidebarUp = sb.triggerIframeKeydown('ArrowUp', 'ArrowUp', 38);
+    assert.ok(sidebarUp.defaultPrevented, 'Sidebar Up must be handled');
+    assert.strictEqual(sidebarSelected.focusCount, 4, 'Sidebar Up should focus the previous item');
+    doc.activeElement = sidebarSelected;
+    var sidebarRight = sb.triggerIframeKeydown('ArrowRight', 'ArrowRight', 39);
+    assert.ok(sidebarRight.defaultPrevented, 'Sidebar Right must be handled');
+    assert.strictEqual(firstCard.focusCount, 2, 'Sidebar Right should prefer selected content card');
+
+    // Content-card directions use visible 2x2 geometry.
+    doc.activeElement = firstCard;
+    var cardRight = sb.triggerIframeKeydown('ArrowRight', 'ArrowRight', 39);
+    assert.ok(cardRight.defaultPrevented, 'Card Right must be handled');
+    assert.strictEqual(secondCard.focusCount, 1, 'Card Right should focus same-row next card');
+    doc.activeElement = secondCard;
+    var cardLeft = sb.triggerIframeKeydown('ArrowLeft', 'ArrowLeft', 37);
+    assert.ok(cardLeft.defaultPrevented, 'Card Left must be handled');
+    assert.strictEqual(firstCard.focusCount, 3, 'Card Left should focus same-row previous card');
+    doc.activeElement = firstCard;
+    var cardDown = sb.triggerIframeKeydown('ArrowDown', 'ArrowDown', 40);
+    assert.ok(cardDown.defaultPrevented, 'Card Down must be handled');
+    assert.strictEqual(thirdCard.focusCount, 1, 'Card Down should focus next-row same-column card');
+    doc.activeElement = thirdCard;
+    var cardUp = sb.triggerIframeKeydown('ArrowUp', 'ArrowUp', 38);
+    assert.ok(cardUp.defaultPrevented, 'Card Up must be handled');
+    assert.strictEqual(firstCard.focusCount, 4, 'Card Up should focus previous-row same-column card');
+
+    doc.activeElement = firstCard;
+    var noTargetUp = sb.triggerIframeKeydown('ArrowUp', 'ArrowUp', 38);
+    assert.strictEqual(noTargetUp.defaultPrevented, undefined, 'Missing card target must pass through');
+    assert.strictEqual(firstCard.focusCount, 4, 'Missing target must not force focus');
+
+    // Anonymous tabindex=-1 toggle and its menu login action are focusable/activatable.
+    var profileToggle = makeElement('DIV', '', {
+        tabindex: '-1'
+    }, { left: 900, top: 20, width: 60, height: 40 });
+    var loginAction = makeElement('BUTTON', 'Log in / Sign up', {},
+        { left: 780, top: 80, width: 180, height: 50 });
+    candidates = [profileToggle, loginAction];
+    assert.strictEqual(api.getState().navigationAdapter.candidateCount, 2,
+        'Profile toggle and login menu action should be included');
+    doc.activeElement = profileToggle;
     sb.triggerIframeKeydown('Enter', 'Enter', 13);
-    assert.ok(mockCardEl.clicked, 'Enter key should click the active focused element');
-    assert.strictEqual(clickCallCount, 1);
+    doc.activeElement = loginAction;
+    sb.triggerIframeKeydown('Enter', 'Enter', 13);
+    assert.strictEqual(profileToggle.clickCount, 1, 'Profile toggle should activate with Enter');
+    assert.strictEqual(loginAction.clickCount, 1, 'Log in / Sign up should activate with Enter');
 
-    // Test 9.5: Empty selector fallback (should not crash and should return false/passthrough)
+    // Intro uses semantic form order and meaningful cross-column actions.
+    iframe.contentWindow.location.hash = '#/intro';
+    var email = makeElement('INPUT', '', { name: 'email', type: 'email', placeholder: 'Email' },
+        { left: 150, top: 100, width: 300, height: 45 });
+    var password = makeElement('INPUT', '', { name: 'password', type: 'password', placeholder: 'Password' },
+        { left: 150, top: 170, width: 300, height: 45 });
+    var confirmPassword = makeElement('INPUT', '', {
+        name: 'confirmPassword', type: 'password', placeholder: 'Confirm password'
+    }, { left: 150, top: 240, width: 300, height: 45 });
+    var accountAction = makeElement('DIV', 'Continue with Google', { tabindex: '0' },
+        { left: 600, top: 170, width: 260, height: 50 });
+    var terms = makeElement('A', 'Terms of Service', { href: '#/terms' },
+        { left: 500, top: 105, width: 160, height: 30 });
+    var consent = makeElement('INPUT', '', { type: 'checkbox', name: 'consent' },
+        { left: 500, top: 145, width: 25, height: 25 });
+    candidates = [email, password, confirmPassword, accountAction, terms, consent];
+
+    doc.activeElement = null;
+    var introBodyDown = sb.triggerIframeKeydown('ArrowDown', 'ArrowDown', 40);
+    assert.ok(introBodyDown.defaultPrevented, 'Intro BODY ArrowDown should use Email as logical start');
+    assert.strictEqual(password.focusCount, 1, 'Intro BODY ArrowDown should focus Password');
+    doc.activeElement = null;
+    var introBodyRight = sb.triggerIframeKeydown('ArrowRight', 'ArrowRight', 39);
+    assert.ok(introBodyRight.defaultPrevented, 'Intro BODY ArrowRight should be consumed');
+    assert.strictEqual(accountAction.focusCount, 1, 'Intro BODY ArrowRight should focus account action');
+    email.focusCount = 0;
+    password.focusCount = 0;
+    confirmPassword.focusCount = 0;
+    accountAction.focusCount = 0;
+
+    doc.activeElement = email;
+    sb.triggerIframeKeydown('ArrowDown', 'ArrowDown', 40);
+    assert.strictEqual(password.focusCount, 1, 'Email Down should focus Password');
+    doc.activeElement = password;
+    sb.triggerIframeKeydown('ArrowDown', 'ArrowDown', 40);
+    assert.strictEqual(confirmPassword.focusCount, 1, 'Password Down should focus Confirm password');
+    doc.activeElement = confirmPassword;
+    sb.triggerIframeKeydown('ArrowUp', 'ArrowUp', 38);
+    assert.strictEqual(password.focusCount, 2, 'Confirm password Up should focus Password');
+    doc.activeElement = password;
+    sb.triggerIframeKeydown('ArrowUp', 'ArrowUp', 38);
+    assert.strictEqual(email.focusCount, 1, 'Password Up should focus Email');
+
+    doc.activeElement = password;
+    sb.triggerIframeKeydown('ArrowRight', 'ArrowRight', 39);
+    assert.strictEqual(accountAction.focusCount, 1, 'Cross-column Right should choose account action');
+    assert.strictEqual(terms.focusCount, undefined, 'Legal links must not win ordinary cross-column movement');
+    assert.strictEqual(consent.focusCount, undefined, 'Consent must not win ordinary cross-column movement');
+    doc.activeElement = accountAction;
+    sb.triggerIframeKeydown('ArrowLeft', 'ArrowLeft', 37);
+    assert.strictEqual(password.focusCount, 3, 'Cross-column Left should return to nearest semantic field');
+
+    // Empty selector fallback remains safe.
     candidates = [];
-    sb.context.window.document.getElementById('app-iframe').contentWindow.document.activeElement = null;
+    doc.activeElement = null;
     var state = api.getState();
     assert.strictEqual(state.navigationAdapter.candidateCount, 0, 'Candidate count should be 0');
-
-    // Triggering ArrowDown when no candidates are found
     sb.triggerIframeKeydown('ArrowDown', 'ArrowDown', 40);
 
-    // Test 9.6: Cross-origin fallback (when contentDocument throws SecurityError, getState logs status)
     Object.defineProperty(sb.elements['app-iframe'], 'contentDocument', {
         get: function() {
             throw new Error('SecurityError: Permission denied to access cross-origin frame');
@@ -612,7 +746,7 @@ console.log('Running standalone Stremio wrapper POC tests...');
 
     // Setup mock contentWindow and contentDocument
     var mockWin = {
-        location: { hash: '#/detail/movie/tt10375624' },
+        location: { hash: '#/intro' },
         history: {
             back: function() { backCalled++; }
         },
@@ -634,8 +768,9 @@ console.log('Running standalone Stremio wrapper POC tests...');
         listener(event);
     });
 
-    assert.strictEqual(backCalled, 1, 'Should call history.back() for detail view');
+    assert.strictEqual(backCalled, 1, 'Should call history.back() from intro');
     assert.strictEqual(preventDefaultCalled, 1, 'Should prevent default event behavior');
+    assert.strictEqual(api.getState().lastNavigation, 'back-from-#/intro', 'Back should record navigation');
 
     // Reset checks and change hash to root home page
     backCalled = 0;

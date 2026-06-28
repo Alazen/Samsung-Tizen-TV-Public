@@ -1,7 +1,7 @@
 {
   "status": "completed",
   "active_taskcard": null,
-  "completed_taskcards": ["TC-001-convert-harness-shell", "TC-002-remote-diagnostics", "TC-003-tests-and-docs", "TC-004-emulator-validation", "TC-005-real-tv-and-final-report", "TC-006-iframe-navigation-adapter", "TC-007-emulator-navigation-validation", "TC-008-real-tv-navigation-validation", "TC-009-commit-push-phase-decision"],
+  "completed_taskcards": ["TC-001-convert-harness-shell", "TC-002-remote-diagnostics", "TC-003-tests-and-docs", "TC-004-emulator-validation", "TC-005-real-tv-and-final-report", "TC-006-iframe-navigation-adapter", "TC-007-emulator-navigation-validation", "TC-008-real-tv-navigation-validation", "TC-009-commit-push-phase-decision", "TC-010-emulator-navigation-login-back-ux"],
   "blocked_reason": null,
-  "updated": "2026-06-27"
+  "updated": "2026-06-28"
 }

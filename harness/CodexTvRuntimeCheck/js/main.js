@@ -310,14 +310,14 @@
         },
         getFocusableElements: function(doc) {
             if (!doc) return [];
-            var selector = 'a[href], button, [tabindex="0"]';
+            var selector = 'a[href], button, input, select, textarea, [role="button"], [tabindex]';
             try {
                 var els = doc.querySelectorAll(selector);
                 var result = [];
                 for (var i = 0; i < els.length; i++) {
                     var el = els[i];
                     var rect = el.getBoundingClientRect();
-                    if (rect.width > 0 && rect.height > 0) {
+                    if (rect.width > 0 && rect.height > 0 && !el.disabled) {
                         result.push(el);
                     }
                 }
@@ -326,12 +326,32 @@
                 return [];
             }
         },
+        getElementText: function(el) {
+            if (!el) return '';
+            var parts = [el.innerText, el.textContent, el.value];
+            var attrs = ['aria-label', 'title', 'name', 'placeholder', 'type', 'href'];
+            for (var i = 0; i < attrs.length; i++) {
+                if (el.getAttribute) parts.push(el.getAttribute(attrs[i]));
+            }
+            return parts.join(' ').replace(/\s+/g, ' ').trim().toLowerCase();
+        },
+        isSelected: function(el) {
+            if (!el) return false;
+            var className = (' ' + (el.className || '') + ' ').toLowerCase();
+            var ariaSelected = el.getAttribute && el.getAttribute('aria-selected');
+            var ariaCurrent = el.getAttribute && el.getAttribute('aria-current');
+            var dataSelected = el.getAttribute && el.getAttribute('data-selected');
+            return ariaSelected === 'true' || !!ariaCurrent || dataSelected === 'true' ||
+                /(^|[\s_-])(selected|active)([\s_-]|$)/.test(className);
+        },
+        isEditable: function(el) {
+            if (!el) return false;
+            var tag = (el.tagName || '').toLowerCase();
+            return tag === 'input' || tag === 'textarea' || tag === 'select' ||
+                el.isContentEditable === true || (el.getAttribute && el.getAttribute('contenteditable') === 'true');
+        },
         isSidebarElement: function(el) {
             if (!el) return false;
-            try {
-                var rect = el.getBoundingClientRect();
-                if (rect.left > 100) return false;
-            } catch (e) {}
             var href = el.getAttribute('href') || '';
             var text = (el.innerText || '').trim().toLowerCase();
             if (text === 'board' || text === 'discover' || text === 'library' || text === 'calendar' || text === 'addons' || text === 'settings') {
@@ -349,6 +369,150 @@
                 if (href === '#/' || href === '#/discover' || href === '#/library' || href === '#/calendar' || href === '#/addons' || href === '#/settings') {
                     return true;
                 }
+            }
+            return false;
+        },
+        getRouteHash: function() {
+            var iframe = document.getElementById('app-iframe');
+            try {
+                return iframe && iframe.contentWindow && iframe.contentWindow.location ?
+                    (iframe.contentWindow.location.hash || '') : '';
+            } catch (e) {
+                return '';
+            }
+        },
+        getContentCards: function(candidates) {
+            var cards = [];
+            for (var i = 0; i < candidates.length; i++) {
+                var el = candidates[i];
+                var href = el.getAttribute ? (el.getAttribute('href') || '') : '';
+                if (!this.isSidebarElement(el) && href.indexOf('#/detail/') === 0) cards.push(el);
+            }
+            return cards;
+        },
+        getSelectedContent: function(candidates) {
+            var cards = this.getContentCards(candidates);
+            for (var i = 0; i < cards.length; i++) {
+                if (this.isSelected(cards[i])) return cards[i];
+            }
+            return null;
+        },
+        isFirstVisibleCardColumn: function(el, candidates) {
+            var cards = this.getContentCards(candidates);
+            var rect = el.getBoundingClientRect();
+            var centerY = rect.top + rect.height / 2;
+            for (var i = 0; i < cards.length; i++) {
+                if (cards[i] === el) continue;
+                var other = cards[i].getBoundingClientRect();
+                var otherCenterY = other.top + other.height / 2;
+                var sameRow = Math.abs(otherCenterY - centerY) < Math.min(rect.height, other.height) / 2;
+                if (sameRow && other.left < rect.left) return false;
+            }
+            return true;
+        },
+        findRouteSidebar: function(candidates) {
+            var hash = this.getRouteHash();
+            var route = hash.split('?')[0];
+            var best = null;
+            var bestScore = 0;
+            var selectedFallback = null;
+            for (var i = 0; i < candidates.length; i++) {
+                var el = candidates[i];
+                if (!this.isSidebarElement(el)) continue;
+                if (!selectedFallback && this.isSelected(el)) selectedFallback = el;
+                var href = el.getAttribute ? (el.getAttribute('href') || '') : '';
+                var hrefRoute = href.split('?')[0];
+                var score = 0;
+                if (hrefRoute === route) score = 4;
+                else if (hrefRoute !== '#/' && route.indexOf(hrefRoute + '/') === 0) score = 3;
+                else if (route.indexOf('#/discover') === 0 && hrefRoute.indexOf('#/discover') === 0) score = 2;
+                if (score && this.isSelected(el)) score += 1;
+                if (score > bestScore) {
+                    best = el;
+                    bestScore = score;
+                }
+            }
+            return best || selectedFallback;
+        },
+        consume: function(event) {
+            if (event.preventDefault) event.preventDefault();
+            if (event.stopPropagation) event.stopPropagation();
+            if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+        },
+        focusHandled: function(el, event, diagnostic, deferred) {
+            if (!el || typeof el.focus !== 'function') return false;
+            this.consume(event);
+            state.lastNavigation = diagnostic;
+            if (deferred) {
+                setTimeout(function() { el.focus(); }, 0);
+            } else {
+                el.focus();
+            }
+            return true;
+        },
+        isIntroRoute: function() {
+            return this.getRouteHash().split('?')[0] === '#/intro';
+        },
+        getIntroFieldRole: function(el) {
+            if (!this.isEditable(el)) return '';
+            var text = this.getElementText(el);
+            if (text.indexOf('confirm') !== -1 && text.indexOf('password') !== -1) return 'confirm-password';
+            if (text.indexOf('password') !== -1) return 'password';
+            if (text.indexOf('email') !== -1 || text.indexOf('e-mail') !== -1) return 'email';
+            return '';
+        },
+        findIntroField: function(candidates, role) {
+            for (var i = 0; i < candidates.length; i++) {
+                if (this.getIntroFieldRole(candidates[i]) === role) return candidates[i];
+            }
+            return null;
+        },
+        isLegalOrConsent: function(el) {
+            var text = this.getElementText(el);
+            var type = el && el.getAttribute ? (el.getAttribute('type') || '').toLowerCase() : '';
+            return type === 'checkbox' || text.indexOf('terms') !== -1 ||
+                text.indexOf('privacy') !== -1 || text.indexOf('consent') !== -1 ||
+                text.indexOf('agree') !== -1;
+        },
+        isMeaningfulAccountAction: function(el) {
+            if (!el || this.isEditable(el) || this.isLegalOrConsent(el) || this.isSidebarElement(el)) return false;
+            var tag = (el.tagName || '').toLowerCase();
+            var role = el.getAttribute ? el.getAttribute('role') : '';
+            var tabIndex = el.getAttribute ? el.getAttribute('tabindex') : null;
+            return tag === 'button' || tag === 'a' || role === 'button' || tabIndex !== null;
+        },
+        findNearest: function(activeEl, candidates, predicate, keyCode) {
+            var filtered = [];
+            for (var i = 0; i < candidates.length; i++) {
+                if (predicate.call(this, candidates[i])) filtered.push(candidates[i]);
+            }
+            return this.findBestSpatial(activeEl.getBoundingClientRect(), filtered, keyCode);
+        },
+        handleIntroKey: function(activeEl, candidates, keyCode, event) {
+            var role = this.getIntroFieldRole(activeEl);
+            var order = ['email', 'password', 'confirm-password'];
+            var i;
+            if (role && (keyCode === 38 || keyCode === 40)) {
+                var nextIndex = order.indexOf(role) + (keyCode === 40 ? 1 : -1);
+                if (nextIndex >= 0 && nextIndex < order.length) {
+                    for (i = 0; i < candidates.length; i++) {
+                        if (this.getIntroFieldRole(candidates[i]) === order[nextIndex]) {
+                            return this.focusHandled(candidates[i], event,
+                                'intro-form-' + role + '-to-' + order[nextIndex], false);
+                        }
+                    }
+                }
+                return false;
+            }
+            if (role && keyCode === 39) {
+                var action = this.findNearest(activeEl, candidates, this.isMeaningfulAccountAction, keyCode);
+                if (action) return this.focusHandled(action, event, 'intro-form-to-account-action', false);
+            }
+            if (this.isMeaningfulAccountAction(activeEl) && keyCode === 37) {
+                var field = this.findNearest(activeEl, candidates, function(el) {
+                    return !!this.getIntroFieldRole(el);
+                }, keyCode);
+                if (field) return this.focusHandled(field, event, 'intro-account-action-to-form', false);
             }
             return false;
         },
@@ -370,7 +534,8 @@
             if (keyCode === 13) {
                 if (activeEl && activeEl !== doc.body && typeof activeEl.click === 'function') {
                     activeEl.click();
-                    event.preventDefault();
+                    this.consume(event);
+                    state.lastNavigation = 'activate-' + (this.getElementText(activeEl).substring(0, 30) || 'control');
                     return true;
                 }
                 return false;
@@ -379,60 +544,55 @@
             var candidates = this.getFocusableElements(doc);
             if (candidates.length === 0) return false;
 
-            if (!activeEl || activeEl === doc.body) {
-                var first = candidates[0];
-                if (first && typeof first.focus === 'function') {
-                    first.focus();
-                    event.preventDefault();
-                    return true;
+            var hasDomFocus = !!activeEl && activeEl !== doc.body;
+            if (!hasDomFocus) {
+                if (this.isIntroRoute()) {
+                    activeEl = this.findIntroField(candidates, 'email');
+                } else if (keyCode === 37) {
+                    activeEl = this.getSelectedContent(candidates);
+                } else {
+                    return false;
+                }
+            }
+
+            if (!activeEl) return false;
+
+            if (this.isIntroRoute()) return this.handleIntroKey(activeEl, candidates, keyCode, event);
+
+            var isCurrentSidebar = this.isSidebarElement(activeEl);
+            var contentCards = this.getContentCards(candidates);
+            var isCurrentCard = contentCards.indexOf(activeEl) !== -1;
+            var target = null;
+
+            if (isCurrentSidebar) {
+                if (keyCode === 38 || keyCode === 40) {
+                    var sidebarCandidates = [];
+                    for (var i = 0; i < candidates.length; i++) {
+                        if (this.isSidebarElement(candidates[i])) sidebarCandidates.push(candidates[i]);
+                    }
+                    target = this.findBestSpatial(activeEl.getBoundingClientRect(), sidebarCandidates, keyCode);
+                    if (target) return this.focusHandled(target, event,
+                        keyCode === 38 ? 'sidebar-up' : 'sidebar-down', false);
+                } else if (keyCode === 39) {
+                    target = this.getSelectedContent(candidates) ||
+                        this.findBestSpatial(activeEl.getBoundingClientRect(), contentCards, keyCode);
+                    if (target) return this.focusHandled(target, event, 'sidebar-to-content-right', false);
                 }
                 return false;
             }
 
-            var activeRect = activeEl.getBoundingClientRect();
-            var isCurrentSidebar = this.isSidebarElement(activeEl);
-
-            if (keyCode === 37) { // Left
-                if (!isCurrentSidebar) {
-                    var sidebarCandidates = [];
-                    for (var i = 0; i < candidates.length; i++) {
-                        if (this.isSidebarElement(candidates[i])) {
-                            sidebarCandidates.push(candidates[i]);
-                        }
-                    }
-                    if (sidebarCandidates.length > 0) {
-                        var bestSidebar = this.findBestSpatial(activeRect, sidebarCandidates, keyCode);
-                        if (bestSidebar) {
-                            bestSidebar.focus();
-                            event.preventDefault();
-                            return true;
-                        }
-                    }
+            if (isCurrentCard && !this.isEditable(activeEl)) {
+                if (keyCode === 37 && this.isFirstVisibleCardColumn(activeEl, candidates)) {
+                    var sidebar = this.findRouteSidebar(candidates);
+                    if (sidebar) return this.focusHandled(sidebar, event,
+                        'discover-first-column-to-current-sidebar', true);
                 }
-            } else if (keyCode === 39) { // Right
-                if (isCurrentSidebar) {
-                    var contentCandidates = [];
-                    for (var i = 0; i < candidates.length; i++) {
-                        if (!this.isSidebarElement(candidates[i])) {
-                            contentCandidates.push(candidates[i]);
-                        }
-                    }
-                    if (contentCandidates.length > 0) {
-                        var bestContent = this.findBestSpatial(activeRect, contentCandidates, keyCode);
-                        if (bestContent) {
-                            bestContent.focus();
-                            event.preventDefault();
-                            return true;
-                        }
-                    }
+                target = this.findBestSpatial(activeEl.getBoundingClientRect(), contentCards, keyCode);
+                if (target) {
+                    var direction = keyCode === 37 ? 'left' : keyCode === 38 ? 'up' :
+                        keyCode === 39 ? 'right' : 'down';
+                    return this.focusHandled(target, event, 'content-card-' + direction, false);
                 }
-            }
-
-            var best = this.findBestSpatial(activeRect, candidates, keyCode);
-            if (best && typeof best.focus === 'function') {
-                best.focus();
-                event.preventDefault();
-                return true;
             }
 
             return false;
@@ -496,6 +656,16 @@
             keyCode: event.keyCode
         };
 
+        if (!state.keyEventsLog) state.keyEventsLog = [];
+        state.keyEventsLog.push({
+            key: key,
+            code: event.code,
+            keyCode: event.keyCode,
+            target: event.target ? event.target.tagName + (event.target.id ? '#' + event.target.id : '') : 'unknown',
+            time: new Date().toLocaleTimeString()
+        });
+        if (state.keyEventsLog.length > 50) state.keyEventsLog.shift();
+
         if (key === "Back" || event.keyCode === 10009 || event.keyCode === 461) {
             if (state.mode === "iframe") {
                 var iframe = document.getElementById("app-iframe");
@@ -507,7 +677,8 @@
                             var currentHash = win.location.hash || "";
                             if (currentHash && currentHash !== "#" && currentHash !== "#/" && currentHash !== "#/board") {
                                 win.history.back();
-                                event.preventDefault();
+                                NavigationAdapter.consume(event);
+                                state.lastNavigation = "back-from-" + currentHash.split('?')[0];
                                 return;
                             }
                         }
