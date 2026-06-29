@@ -27,6 +27,7 @@ Convert the existing `harness/CodexTvRuntimeCheck` Samsung TV Web Application di
 | 8 | `taskcards/TC-008-real-tv-navigation-validation.md` | TC-007 | completed |
 | 9 | `taskcards/TC-009-commit-push-phase-decision.md` | TC-008 | completed |
 | 10 | `taskcards/TC-010-emulator-navigation-login-back-ux.md` | TC-009 | completed |
+| 11 | `taskcards/TC-011-cold-start-focus-and-visible-selection.md` | TC-010 | active |
 
 ## Allowed files
 

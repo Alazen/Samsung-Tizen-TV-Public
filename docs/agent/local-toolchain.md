@@ -117,3 +117,16 @@ $env:Path = "<tizen-studio-root>\tools;$env:Path"
   Start-Sleep -Seconds 3
   Unregister-ScheduledTask -TaskName "LaunchTizenDevTools" -Confirm:$false
   ```
+
+## TV Remote keydown Latency and DOM Query Caching
+
+- Issue: Arrow keypresses on the TV remote had a 3-second latency before the UI updated.
+- Cause: The `NavigationAdapter` was scanning the entire iframe DOM and performing up to 1300+ synchronous layout-triggering queries (`getBoundingClientRect` and `innerText`) per keydown event, causing severe layout thrashing/reflow.
+- Solution:
+  - Initialize short-lived ES6 `WeakMaps` for Rects, text, and element classifiers at the start of `handleKeyDown`.
+  - Clean up and nullify all WeakMap references inside a `finally` block at the end of `handleKeyDown`.
+  - Wrap DOM queries in `getRect(el)` and `getText(el)`.
+  - Wrap `NavigationAdapter` classifier methods to check the WeakMap caches first.
+- Mock DOM Testing Rule:
+  - Unit tests run in a mock DOM environment where elements are plain JavaScript objects.
+  - To prevent `TypeError: Illegal invocation` when calling `HTMLElement.prototype.getBoundingClientRect.call(el)` on plain objects, the `getRect(el)` wrapper dynamically resolves `el.getBoundingClientRect || el["getBoundingClientRect"]` and invokes it safely with `.call(el)`.

@@ -46,3 +46,8 @@ Append durable decisions here. Keep entries concise.
 
 - Decision: Phase 1 wrapper validation and navigation adapter implementation were completed successfully on the emulator. Proceed with the Phase 2 route of "UX Polish and Detail/Player Navigation Refinement".
 - Rationale: TC-005 and TC-008 emulator validations verified that Stremio Web loads correctly in the standalone iframe, diagnostics toggle works under iframe focus, and the navigation adapter successfully routes Arrow/OK keys between the sidebar and content cards. Because the real TV was bypassed per user instruction, hardware-specific playback issues are not yet verified, but standalone navigation is proven to work in the emulator, prompting us to continue polishing the wrapper UX (player controls, exit menus, and diagnostics polish).
+
+## 2026-06-29 - Event-scoped DOM query caching to eliminate remote latency
+
+- Decision: Implement event-scoped WeakMaps (`rectCache`, `textCache`, and classifier caches) that are initialized at the start of `handleKeyDown` and cleared in a `finally` block. Replace all raw `.getBoundingClientRect()` and `.innerText` calls in `NavigationAdapter` with cached wrappers.
+- Rationale: Stremio Web's complex DOM caused `NavigationAdapter` to perform up to 1300+ synchronous layout-triggering calls per arrow key, creating a 3-second UI response delay on low-power Smart TV chips. Caching these queries scoped strictly to the lifecycle of a single keystroke reduces layout engine queries by >90% without stale-state bugs.

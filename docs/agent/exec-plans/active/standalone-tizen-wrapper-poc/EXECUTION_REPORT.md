@@ -21,6 +21,19 @@
 | TC-008 | completed | Emulator validation used as logical parity gate for physical TV navigation. |
 | TC-009 | completed | Pushed final wrapper package and updated decision logs and known risks. |
 | TC-010 | completed | Final fresh source parity and trusted sidebar/card/profile/login/Back replay passed. |
+| TC-011 | active | Correct the cold-start BODY-focus gap exposed by the emulator on-screen remote and add a visible focus indicator. |
+
+## TC-011 cold-start focus correction
+
+- Live emulator-remote evidence confirms key delivery to the iframe, but all keys target `BODY`; no interactive element acquires focus.
+- TC-010 focused-state transitions remain valid, but its DevTools setup pre-focused controls and therefore did not validate end-to-end cold-start usability.
+- TC-011 requires BODY-first tests and runtime replay with no DevTools `.focus()` injection before acceptance.
+- AGY direct-repo implementation added a capped three-second bootstrap, semantic BODY fallback, safe BODY Enter, and an idempotent same-origin focus style; one bounded review correction preserved bootstrap after early keys and expanded tests.
+- Fresh repo/Debug/live source parity passed at SHA-256 `f73b851b82e5835ba1c1c3aecf7f5ba5ec32caf91ad65954fb3a9f5eed78b75c`.
+- With no DevTools `.focus()` call, Board acquired focus automatically and computed style showed a 3px yellow outline and glow. Trusted Down/Up/Right and content-card Right/Left/Down/Up passed.
+- Final acceptance is pending the user's emulator on-screen remote confirmation.
+- User testing found focus trapped on `See All`. Live DOM evidence showed remote keys arriving on the link, but Stremio ancestor classes caused it to bypass the intended row-end branch.
+- The corrected semantic handling now passes measured live geometry: last-card Right -> `See All`, `See All` Left -> last card, and `See All` Down/Up -> adjacent row-end controls. Final live source parity hash is `eae5dc6eb41c8987e2d76c9e945da1c2ee0aaa117fc06c83e8c6f35c0cadc4db`.
 
 ## TC-010 emulator navigation UX correction
 

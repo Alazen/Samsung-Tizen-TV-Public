@@ -15,6 +15,24 @@ function createSandbox() {
     var mockIntervals = {};
     var activeIntervalId = null;
     var mockTimeouts = [];
+    var mockTime = 1719597600000;
+
+    var MockDate = function() {
+        var args = Array.prototype.slice.call(arguments);
+        if (!(this instanceof MockDate)) {
+            return new Date(mockTime).toString();
+        }
+        if (args.length === 0) {
+            return new Date(mockTime);
+        }
+        return new (Function.prototype.bind.apply(Date, [null].concat(args)));
+    };
+    MockDate.now = function() {
+        return mockTime;
+    };
+    MockDate.UTC = Date.UTC;
+    MockDate.parse = Date.parse;
+    MockDate.prototype = Date.prototype;
 
     var iframeAccessCount = 0;
     var logRenderCount = 0;
@@ -177,8 +195,14 @@ function createSandbox() {
             delete mockIntervals[id];
         },
         setTimeout: function(cb, delay) {
-            mockTimeouts.push({ cb: cb, delay: delay });
-            return mockTimeouts.length;
+            var timeoutObj = { cb: cb, delay: delay, active: true };
+            mockTimeouts.push(timeoutObj);
+            return timeoutObj;
+        },
+        clearTimeout: function(obj) {
+            if (obj) {
+                obj.active = false;
+            }
         },
         MediaSource: {
             isTypeSupported: function(mime) {
@@ -205,9 +229,10 @@ function createSandbox() {
         setInterval: mockWindow.setInterval,
         clearInterval: mockWindow.clearInterval,
         setTimeout: mockWindow.setTimeout,
+        clearTimeout: mockWindow.clearTimeout,
         MediaSource: mockWindow.MediaSource,
         tizen: mockWindow.tizen,
-        Date: Date,
+        Date: MockDate,
         String: String,
         Math: Math,
         JSON: JSON,
@@ -238,21 +263,36 @@ function createSandbox() {
         flushTimeouts: function() {
             var pending = mockTimeouts.slice();
             mockTimeouts.length = 0;
-            pending.forEach(function(timeout) { timeout.cb(); });
+            pending.forEach(function(timeout) {
+                if (timeout.active !== false) {
+                    timeout.cb();
+                }
+            });
         },
         setMockContentDocument: function(doc) { mockContentDocument = doc; },
-        triggerKeydown: function(key, code, keyCode) {
+        triggerKeydown: function(key, code, keyCode, isRepeat) {
+            if (!isRepeat) {
+                mockTime += 500;
+            } else {
+                mockTime += 10;
+            }
             var event = {
                 key: key,
                 code: code,
                 keyCode: keyCode,
-                preventDefault: function() {}
+                preventDefault: function() { this.defaultPrevented = true; }
             };
             keydownListeners.forEach(function(listener) {
                 listener(event);
             });
+            return event;
         },
-        triggerIframeKeydown: function(key, code, keyCode) {
+        triggerIframeKeydown: function(key, code, keyCode, isRepeat) {
+            if (!isRepeat) {
+                mockTime += 500;
+            } else {
+                mockTime += 10;
+            }
             var event = {
                 key: key,
                 code: code,
@@ -331,9 +371,14 @@ console.log('Running standalone Stremio wrapper POC tests...');
     assert.strictEqual(api.getState().diagnosticsOpen, true, 'Info should open diagnostics');
     assert.ok(sb.getActiveIntervalId(), '1-second inspection timer should start');
 
-    // 2. ColorF0Red key -> toggle closed, stop interval timer
+    // 2. ColorF0Red key -> switches active tab to red (remains open)
     sb.triggerKeydown('ColorF0Red', 'ColorF0Red', 403);
-    assert.strictEqual(api.getState().diagnosticsOpen, false, 'ColorF0Red should close diagnostics');
+    assert.strictEqual(api.getState().diagnosticsOpen, true, 'ColorF0Red should switch tab and remain open');
+    assert.strictEqual(api.getState().activeTab, 'red', 'Active tab should switch to red');
+
+    // Pressing ColorF0Red again (since it is the active tab) closes diagnostics
+    sb.triggerKeydown('ColorF0Red', 'ColorF0Red', 403);
+    assert.strictEqual(api.getState().diagnosticsOpen, false, 'ColorF0Red second press should close diagnostics');
     assert.strictEqual(sb.getActiveIntervalId(), null, '1-second inspection timer should stop when closed');
 
     // 3. '1' key -> toggle open, start interval timer
@@ -477,9 +522,11 @@ console.log('Running standalone Stremio wrapper POC tests...');
     assert.strictEqual(api.getState().diagnosticsOpen, true, 'Info iframe key must toggle diagnostics open');
     assert.ok(sb.getActiveIntervalId(), '1-second timer must start when diagnostics are opened via iframe');
 
-    // 3. ColorF0Red key inside the iframe should toggle diagnostics back to closed and stop interval timer
+    // 3. ColorF0Red key inside the iframe should switch tab to red, then second press closes diagnostics
     sb.triggerIframeKeydown('ColorF0Red', 'ColorF0Red', 403);
-    assert.strictEqual(api.getState().diagnosticsOpen, false, 'ColorF0Red iframe key must toggle diagnostics closed');
+    assert.strictEqual(api.getState().diagnosticsOpen, true, 'ColorF0Red first press switches tab and remains open');
+    sb.triggerIframeKeydown('ColorF0Red', 'ColorF0Red', 403);
+    assert.strictEqual(api.getState().diagnosticsOpen, false, 'ColorF0Red second press closes diagnostics');
     assert.strictEqual(sb.getActiveIntervalId(), null, '1-second timer must stop when diagnostics are closed via iframe');
 
     // 4. '1' key inside the iframe should toggle diagnostics open
@@ -645,16 +692,33 @@ console.log('Running standalone Stremio wrapper POC tests...');
     assert.strictEqual(firstCard.focusCount, 4, 'Missing target must not force focus');
 
     // Anonymous tabindex=-1 toggle and its menu login action are focusable/activatable.
+    var mockHeader = { tagName: 'HEADER', getAttribute: function() { return null; } };
     var profileToggle = makeElement('DIV', '', {
-        tabindex: '-1'
+        tabindex: '-1',
+        parentElement: mockHeader
     }, { left: 900, top: 20, width: 60, height: 40 });
     var loginAction = makeElement('BUTTON', 'Log in / Sign up', {},
         { left: 780, top: 80, width: 180, height: 50 });
+    profileToggle.focus = function() {
+        this.focused = true;
+        this.focusCount = (this.focusCount || 0) + 1;
+        doc.activeElement = this;
+    };
+    loginAction.focus = function() {
+        this.focused = true;
+        this.focusCount = (this.focusCount || 0) + 1;
+        doc.activeElement = this;
+    };
     candidates = [profileToggle, loginAction];
     assert.strictEqual(api.getState().navigationAdapter.candidateCount, 2,
         'Profile toggle and login menu action should be included');
     doc.activeElement = profileToggle;
     sb.triggerIframeKeydown('Enter', 'Enter', 13);
+    doc.activeElement = doc.body;
+    loginAction.focusCount = 0;
+    sb.flushTimeouts();
+    assert.strictEqual(loginAction.focusCount, 1, 'Profile Enter should claim the visible login action after the menu opens');
+    assert.strictEqual(api.getState().lastNavigation, 'profile-menu-focus', 'Profile menu focus should be recorded');
     doc.activeElement = loginAction;
     sb.triggerIframeKeydown('Enter', 'Enter', 13);
     assert.strictEqual(profileToggle.clickCount, 1, 'Profile toggle should activate with Enter');
@@ -755,6 +819,35 @@ console.log('Running standalone Stremio wrapper POC tests...');
 
     sb.context.window.document.getElementById('app-iframe').contentWindow = mockWin;
     sb.setMockContentDocument(mockWin.document);
+    var mockHeader = {
+        tagName: 'HEADER',
+        parentElement: null,
+        getAttribute: function() { return null; }
+    };
+    var profileAfterBack = {
+        tagName: 'DIV',
+        innerText: '',
+        textContent: '',
+        className: '',
+        parentElement: mockHeader,
+        getAttribute: function(name) {
+            if (name === 'tabindex') return '-1';
+            return null;
+        },
+        getBoundingClientRect: function() {
+            return { left: 800, top: 20, width: 60, height: 40 };
+        },
+        focusCount: 0,
+        focus: function() {
+            this.focusCount++;
+            mockWin.document.activeElement = this;
+        }
+    };
+    mockWin.document.querySelectorAll = function() {
+        return [profileAfterBack];
+    };
+    mockWin.document.body = { tagName: 'BODY' };
+    mockWin.document.activeElement = mockWin.document.body;
 
     // Trigger keydown on document for Back key (keyCode 10009)
     var event = {
@@ -771,6 +864,9 @@ console.log('Running standalone Stremio wrapper POC tests...');
     assert.strictEqual(backCalled, 1, 'Should call history.back() from intro');
     assert.strictEqual(preventDefaultCalled, 1, 'Should prevent default event behavior');
     assert.strictEqual(api.getState().lastNavigation, 'back-from-#/intro', 'Back should record navigation');
+    sb.flushTimeouts();
+    assert.strictEqual(profileAfterBack.focusCount, 1, 'Back from intro should restore profile focus');
+    assert.strictEqual(api.getState().lastNavigation, 'back-restore-profile', 'Back restore should be recorded');
 
     // Reset checks and change hash to root home page
     backCalled = 0;
@@ -784,7 +880,1165 @@ console.log('Running standalone Stremio wrapper POC tests...');
     assert.strictEqual(backCalled, 0, 'Should NOT call history.back() for home view');
     assert.strictEqual(preventDefaultCalled, 0, 'Should NOT prevent default event behavior for home view');
 
+    // Detail routes restore the first visible card after history back.
+    var firstCardAfterBack = {
+        tagName: 'A',
+        innerText: 'Movie Card',
+        textContent: 'Movie Card',
+        className: '',
+        getAttribute: function(name) {
+            if (name === 'href') return '#/detail/movie/tt123';
+            return null;
+        },
+        getBoundingClientRect: function() {
+            return { left: 200, top: 120, width: 160, height: 200 };
+        },
+        focusCount: 0,
+        focus: function() {
+            this.focusCount++;
+            mockWin.document.activeElement = this;
+        }
+    };
+    mockWin.location.hash = '#/detail/movie/tt123';
+    mockWin.document.activeElement = mockWin.document.body;
+    mockWin.document.querySelectorAll = function() {
+        return [firstCardAfterBack];
+    };
+    sb.keydownListeners.forEach(function(listener) {
+        listener(event);
+    });
+    assert.strictEqual(backCalled, 1, 'Should call history.back() from detail route');
+    assert.strictEqual(preventDefaultCalled, 1, 'Should prevent default event behavior for detail route');
+    assert.strictEqual(api.getState().lastNavigation, 'back-from-#/detail/movie/tt123', 'Back should record detail navigation');
+    sb.flushTimeouts();
+    assert.strictEqual(firstCardAfterBack.focusCount, 1, 'Back from detail should restore first-card focus');
+    assert.strictEqual(api.getState().lastNavigation, 'back-restore-first-card', 'Detail back restore should be recorded');
+
     console.log('[PASS] Test 10: Back Key Navigation passed');
+})();
+
+// Test 11: Cold-start focus bootstrap, BODY fallbacks, and style injection
+(function() {
+    console.log('Running Test 11: Cold-start focus bootstrap and visible selection...');
+    var sb = createSandbox();
+    var api = sb.context.window.__STREMIO_WEB_WRAPPER_POC__;
+
+    var doc = sb.context.document.getElementById('app-iframe').contentDocument;
+
+    // Helper to make test elements
+    function makeElement(targetDoc, tagName, text, attrs, rect) {
+        attrs = attrs || {};
+        return {
+            tagName: tagName,
+            innerText: text || '',
+            textContent: text || '',
+            className: attrs.className || '',
+            disabled: false,
+            parentElement: attrs.parentElement || null,
+            focused: false,
+            focusCount: 0,
+            clicked: false,
+            clickCount: 0,
+            blurCount: 0,
+            getAttribute: function(name) {
+                if (name === 'class') return this.className;
+                return Object.prototype.hasOwnProperty.call(attrs, name) ? attrs[name] : null;
+            },
+            getBoundingClientRect: function() { return rect; },
+            focus: function() {
+                this.focused = true;
+                this.focusCount++;
+                if (targetDoc) targetDoc.activeElement = this;
+            },
+            blur: function() {
+                this.focused = false;
+                this.blurCount++;
+                if (targetDoc && targetDoc.activeElement === this) targetDoc.activeElement = null;
+            },
+            click: function() {
+                this.clicked = true;
+                this.clickCount++;
+            }
+        };
+    }
+
+    var sidebarBoard = makeElement(doc, 'A', 'Board', { href: '#/' }, { left: 10, top: 100, width: 100, height: 50 });
+    var sidebarDiscover = makeElement(doc, 'A', 'Discover', { href: '#/discover' }, { left: 10, top: 160, width: 100, height: 50 });
+    var contentCard = makeElement(doc, 'A', 'Movie Card', { href: '#/detail/movie/tt1' }, { left: 200, top: 100, width: 150, height: 150 });
+
+    var candidates = [sidebarBoard, sidebarDiscover, contentCard];
+    var injectedStyles = [];
+
+    doc.querySelectorAll = function(sel) {
+        return candidates;
+    };
+    doc.head = {
+        appendChild: function(el) {
+            if (el.id) injectedStyles.push(el.id);
+        }
+    };
+    var injectedStyleElements = [];
+    doc.getElementById = function(id) {
+        if (id === 'codex-tv-focus-style') {
+            for (var i = 0; i < injectedStyleElements.length; i++) {
+                if (injectedStyleElements[i].id === id) return injectedStyleElements[i];
+            }
+            return null;
+        }
+        return null;
+    };
+    doc.createElement = function(tag) {
+        if (tag === 'style') {
+            var styleEl = { id: '', textContent: '' };
+            injectedStyleElements.push(styleEl);
+            return styleEl;
+        }
+        return { id: '' };
+    };
+
+    sb.context.document.getElementById('app-iframe').contentWindow = {
+        document: doc,
+        location: { hash: '#/' }
+    };
+
+    // Trigger iframe onload
+    var iframe = sb.elements['app-iframe'];
+    iframe.onload();
+
+    // Verify bootstrap is scheduled
+    var state = api.getState();
+    assert.strictEqual(state.navigationAdapter.bootstrap.active, true, 'Bootstrap timer should be active after load');
+    assert.strictEqual(state.navigationAdapter.bootstrap.retryCount, 0, 'Bootstrap retryCount should start at 0');
+
+    // Flush timeout to execute first attempt
+    // Selected route is '#/' and selected sidebar element should be sidebarBoard
+    sidebarBoard.className = 'selected';
+    doc.activeElement = doc; // set activeElement to something other than BODY to check non-BODY behavior
+
+    sb.flushTimeouts();
+    assert.strictEqual(sidebarBoard.focusCount, 0, 'Bootstrap should not steal focus if already focused on non-BODY element');
+
+    // Reset activeElement to null (representing BODY/null focus)
+    doc.activeElement = null;
+
+    // Trigger onload again to restart bootstrap
+    iframe.onload();
+    sb.flushTimeouts();
+
+    // Now sidebarBoard should be focused because doc.activeElement was null (BODY)
+    assert.strictEqual(sidebarBoard.focusCount, 1, 'Bootstrap should focus the selected sidebar element (Board)');
+
+    // Assert focus-style details
+    assert.strictEqual(injectedStyleElements.length, 1, 'Exactly one focus style element should be created');
+    var styleEl = injectedStyleElements[0];
+    assert.strictEqual(styleEl.id, 'codex-tv-focus-style', 'Style ID must be codex-tv-focus-style');
+    assert.ok(styleEl.textContent.indexOf('outline') !== -1, 'Style text content must contain outline');
+    assert.ok(styleEl.textContent.indexOf('box-shadow') !== -1, 'Style text content must contain box-shadow');
+    assert.ok(styleEl.textContent.indexOf('focus-within') !== -1, 'Style text content must contain focus-within');
+
+    // Assert repeated iframe load/injection is idempotent (one style append)
+    iframe.onload();
+    assert.strictEqual(injectedStyleElements.length, 1, 'Style element must remain unique on repeated iframe load (idempotent)');
+
+    // Test retry behavior
+    var retrySb = createSandbox();
+    var retryApi = retrySb.context.window.__STREMIO_WEB_WRAPPER_POC__;
+    var retryDoc = retrySb.context.document.getElementById('app-iframe').contentDocument;
+
+    retryDoc.querySelectorAll = function() { return []; }; // No candidates initially
+    retrySb.context.document.getElementById('app-iframe').contentWindow = {
+        document: retryDoc,
+        location: { hash: '#/' }
+    };
+
+    // Load
+    retrySb.elements['app-iframe'].onload();
+    // 1st flush -> no candidates, should reschedule and increment retry count
+    retrySb.flushTimeouts();
+    var retryState = retryApi.getState();
+    assert.strictEqual(retryState.navigationAdapter.bootstrap.retryCount, 1, 'Retry count should increment after empty candidates');
+    assert.strictEqual(retryState.navigationAdapter.bootstrap.active, true, 'Bootstrap should still be active');
+
+    // Populate candidates
+    var freshBoard = makeElement(retryDoc, 'A', 'Board', { href: '#/' }, { left: 10, top: 100, width: 100, height: 50 });
+    freshBoard.className = 'selected';
+    retryDoc.querySelectorAll = function() { return [freshBoard]; };
+
+    // 2nd flush -> should succeed
+    retrySb.flushTimeouts();
+    assert.strictEqual(freshBoard.focusCount, 1, 'Should focus target on retry success');
+    assert.strictEqual(retryApi.getState().navigationAdapter.bootstrap.active, false, 'Bootstrap should stop after success');
+
+    // Test retry cap
+    var capSb = createSandbox();
+    var capDoc = capSb.context.document.getElementById('app-iframe').contentDocument;
+    capDoc.querySelectorAll = function() { return []; };
+    capSb.context.document.getElementById('app-iframe').contentWindow = {
+        document: capDoc,
+        location: { hash: '#/' }
+    };
+    capSb.elements['app-iframe'].onload();
+    for (var i = 0; i < 20; i++) {
+        capSb.flushTimeouts();
+    }
+    var capState = capSb.context.window.__STREMIO_WEB_WRAPPER_POC__.getState();
+    assert.strictEqual(capState.navigationAdapter.bootstrap.active, false, 'Bootstrap should deactivate after cap is reached');
+
+    // Test #/intro bootstrap skip
+    var introSb = createSandbox();
+    var introApi = introSb.context.window.__STREMIO_WEB_WRAPPER_POC__;
+    var introDoc = introSb.context.document.getElementById('app-iframe').contentDocument;
+
+    var emailInput = makeElement(introDoc, 'INPUT', 'email', { name: 'email', type: 'email' }, { left: 10, top: 100, width: 100, height: 50 });
+    introDoc.querySelectorAll = function() { return [emailInput]; };
+
+    introSb.context.document.getElementById('app-iframe').contentWindow = {
+        document: introDoc,
+        location: { hash: '#/intro' }
+    };
+
+    // Simulating Stremio's existing focus on E-mail input:
+    introDoc.activeElement = emailInput;
+    emailInput.focusCount = 0;
+
+    // Trigger onload
+    introSb.elements['app-iframe'].onload();
+    introSb.flushTimeouts();
+
+    assert.strictEqual(emailInput.focusCount, 0, 'Bootstrap must not steal existing focus on #/intro route');
+
+    // Case 2: activeElement is BODY/null on #/intro:
+    introDoc.activeElement = null;
+    introSb.elements['app-iframe'].onload();
+    introSb.flushTimeouts();
+
+    assert.strictEqual(introDoc.activeElement, null, 'No wrapper bootstrap focus should occur on #/intro route');
+    assert.strictEqual(introApi.getState().navigationAdapter.bootstrap.active, false, 'Bootstrap should not be active on #/intro');
+
+    // Test early-key-before-render
+    var earlySb = createSandbox();
+    var earlyApi = earlySb.context.window.__STREMIO_WEB_WRAPPER_POC__;
+    var earlyDoc = earlySb.context.document.getElementById('app-iframe').contentDocument;
+
+    earlyDoc.querySelectorAll = function() { return []; }; // empty/no candidates
+    earlySb.context.document.getElementById('app-iframe').contentWindow = {
+        document: earlyDoc,
+        location: { hash: '#/' }
+    };
+
+    earlySb.elements['app-iframe'].onload();
+
+    // Send a directional key event on BODY
+    earlyDoc.activeElement = null;
+    var earlyEvent = earlySb.triggerIframeKeydown('ArrowDown', 'ArrowDown', 40);
+    assert.strictEqual(earlyEvent.defaultPrevented, undefined, 'Key should pass through when candidates not rendered yet');
+    assert.strictEqual(earlyApi.getState().navigationAdapter.bootstrap.active, true, 'Bootstrap remains active/bounded');
+
+    // Now candidates render
+    var earlyBoard = makeElement(earlyDoc, 'A', 'Board', { href: '#/' }, { left: 10, top: 100, width: 100, height: 50 });
+    earlyBoard.className = 'selected';
+    earlyDoc.querySelectorAll = function() { return [earlyBoard]; };
+
+    // Next scheduled bootstrap attempt focuses the control
+    earlySb.flushTimeouts();
+    assert.strictEqual(earlyBoard.focusCount, 1, 'Next scheduled attempt focuses selected control');
+    assert.strictEqual(earlyApi.getState().navigationAdapter.bootstrap.active, false, 'Bootstrap timer should be cancelled on success');
+
+    // Test cancellation/replacement on adapter destroy and iframe reload
+    var cancelSb = createSandbox();
+    var cancelApi = cancelSb.context.window.__STREMIO_WEB_WRAPPER_POC__;
+    var cancelDoc = cancelSb.context.document.getElementById('app-iframe').contentDocument;
+
+    var cancelBoard = makeElement(cancelDoc, 'A', 'Board', { href: '#/' }, { left: 10, top: 100, width: 100, height: 50 });
+    cancelBoard.className = 'selected';
+    cancelDoc.querySelectorAll = function() { return [cancelBoard]; };
+    cancelSb.context.document.getElementById('app-iframe').contentWindow = {
+        document: cancelDoc,
+        location: { hash: '#/' }
+    };
+
+    // 1. Destroy cancellation
+    cancelSb.elements['app-iframe'].onload();
+    cancelSb.context.window.__STREMIO_WEB_WRAPPER_POC__.getState(); // Ensure adapter loaded
+    cancelDoc.activeElement = null;
+    cancelSb.elements['launch-btn'].onclick();
+
+    cancelSb.flushTimeouts();
+    assert.strictEqual(cancelBoard.focusCount, 0, 'Destroyed adapter should not run scheduled bootstrap');
+
+    // 2. Reload cancellation/replacement
+    var reloadSb = createSandbox();
+    var reloadApi = reloadSb.context.window.__STREMIO_WEB_WRAPPER_POC__;
+    var reloadDoc = reloadSb.context.document.getElementById('app-iframe').contentDocument;
+
+    var reloadBoard = makeElement(reloadDoc, 'A', 'Board', { href: '#/' }, { left: 10, top: 100, width: 100, height: 50 });
+    reloadBoard.className = 'selected';
+    reloadDoc.querySelectorAll = function() { return [reloadBoard]; };
+    reloadSb.context.document.getElementById('app-iframe').contentWindow = {
+        document: reloadDoc,
+        location: { hash: '#/' }
+    };
+
+    reloadSb.elements['app-iframe'].onload();
+    reloadSb.elements['launch-btn'].onclick();
+    reloadDoc.activeElement = null;
+
+    reloadSb.flushTimeouts();
+    assert.strictEqual(reloadBoard.focusCount, 0, 'Pending bootstrap must be cancelled/replaced');
+
+    // Test BODY directional fallbacks
+    var dirSb = createSandbox();
+    var dirDoc = dirSb.context.document.getElementById('app-iframe').contentDocument;
+
+    var sidebarBoardDir = makeElement(dirDoc, 'A', 'Board', { href: '#/' }, { left: 10, top: 100, width: 100, height: 50 });
+    var sidebarDiscoverDir = makeElement(dirDoc, 'A', 'Discover', { href: '#/discover' }, { left: 10, top: 160, width: 100, height: 50 });
+    var contentCardDir = makeElement(dirDoc, 'A', 'Movie Card', { href: '#/detail/movie/tt1' }, { left: 200, top: 100, width: 150, height: 150 });
+
+    dirDoc.querySelectorAll = function() {
+        return [sidebarBoardDir, sidebarDiscoverDir, contentCardDir];
+    };
+    dirSb.context.document.getElementById('app-iframe').contentWindow = {
+        document: dirDoc,
+        location: { hash: '#/' }
+    };
+    dirSb.elements['app-iframe'].onload();
+    dirSb.flushTimeouts();
+
+    sidebarBoardDir.className = 'selected';
+    sidebarBoardDir.focusCount = 0;
+    sidebarDiscoverDir.focusCount = 0;
+    contentCardDir.focusCount = 0;
+    dirDoc.activeElement = null;
+
+    // 1. Cold-start BODY ArrowDown
+    var eventDown = dirSb.triggerIframeKeydown('ArrowDown', 'ArrowDown', 40);
+    assert.ok(eventDown.defaultPrevented, 'BODY ArrowDown should be handled');
+    assert.strictEqual(sidebarDiscoverDir.focusCount, 1, 'ArrowDown should move Board -> Discover');
+
+    // Reset select Discover
+    dirDoc.activeElement = null;
+    dirSb.context.document.getElementById('app-iframe').contentWindow.location.hash = '#/discover';
+    sidebarBoardDir.className = '';
+    sidebarDiscoverDir.className = 'selected';
+    sidebarDiscoverDir.focusCount = 0;
+    sidebarBoardDir.focusCount = 0;
+
+    // 2. Cold-start BODY ArrowUp
+    var eventUp = dirSb.triggerIframeKeydown('ArrowUp', 'ArrowUp', 38);
+    assert.ok(eventUp.defaultPrevented, 'BODY ArrowUp should be handled');
+    assert.strictEqual(sidebarBoardDir.focusCount, 1, 'ArrowUp should move Discover -> Board');
+
+    // Reset select Board
+    dirDoc.activeElement = null;
+    dirSb.context.document.getElementById('app-iframe').contentWindow.location.hash = '#/';
+    sidebarBoardDir.className = 'selected';
+    sidebarDiscoverDir.className = '';
+    sidebarBoardDir.focusCount = 0;
+    contentCardDir.focusCount = 0;
+
+    // 3. Cold-start BODY ArrowRight: Board -> nearest content card
+    var eventRight = dirSb.triggerIframeKeydown('ArrowRight', 'ArrowRight', 39);
+    assert.ok(eventRight.defaultPrevented, 'BODY ArrowRight should be handled');
+    assert.strictEqual(contentCardDir.focusCount, 1, 'ArrowRight should move Board -> content card');
+
+    // 4. Cold-start selected first-card Left -> current sidebar still works
+    dirDoc.activeElement = null;
+    sidebarBoardDir.className = 'selected';
+    contentCardDir.className = 'selected';
+    sidebarBoardDir.focusCount = 0;
+    var eventLeft = dirSb.triggerIframeKeydown('ArrowLeft', 'ArrowLeft', 37);
+    assert.ok(eventLeft.defaultPrevented, 'BODY ArrowLeft on card should be handled');
+    dirSb.flushTimeouts();
+    assert.strictEqual(sidebarBoardDir.focusCount, 1, 'ArrowLeft on card should move to Board');
+
+    // 5. BODY Enter focuses safely without activating; focused Enter activates
+    dirDoc.activeElement = null;
+    contentCardDir.className = 'selected';
+    contentCardDir.focusCount = 0;
+    contentCardDir.clickCount = 0;
+
+    var eventEnter1 = dirSb.triggerIframeKeydown('Enter', 'Enter', 13);
+    assert.ok(eventEnter1.defaultPrevented, 'First Enter on BODY should focus');
+    assert.strictEqual(contentCardDir.focusCount, 1, 'First Enter focuses');
+    assert.strictEqual(contentCardDir.clickCount, 0, 'First Enter does not click');
+
+    dirDoc.activeElement = contentCardDir;
+    var eventEnter2 = dirSb.triggerIframeKeydown('Enter', 'Enter', 13);
+    assert.ok(eventEnter2.defaultPrevented, 'Second Enter clicks');
+    assert.strictEqual(contentCardDir.clickCount, 1, 'Second Enter clicks');
+
+    // Test See All trap row-end navigation
+    var seeAllSb = createSandbox();
+    var seeAllApi = seeAllSb.context.window.__STREMIO_WEB_WRAPPER_POC__;
+    var seeAllDoc = seeAllSb.context.document.getElementById('app-iframe').contentDocument;
+
+    // Row 1 content card and See All link
+    var cardRow1 = makeElement(seeAllDoc, 'A', 'Movie 1', { href: '#/detail/movie/1' }, { left: 1705, top: 139, width: 200, height: 339 });
+    var seeAllRow1 = makeElement(seeAllDoc, 'A', 'See All', {
+        href: '#/discover/row1',
+        parentElement: { className: 'navigation-container', parentElement: null }
+    }, { left: 1790, top: 98, width: 100, height: 38 });
+
+    // Row 2 content card and See All link
+    var cardRow2 = makeElement(seeAllDoc, 'A', 'Movie 2', { href: '#/detail/movie/2' }, { left: 1705, top: 549, width: 200, height: 339 });
+    var seeAllRow2 = makeElement(seeAllDoc, 'A', 'See All', {
+        href: '#/discover/row2',
+        parentElement: { className: 'navigation-container', parentElement: null }
+    }, { left: 1790, top: 508, width: 100, height: 38 });
+
+    seeAllDoc.querySelectorAll = function() {
+        return [cardRow1, seeAllRow1, cardRow2, seeAllRow2];
+    };
+    seeAllSb.context.document.getElementById('app-iframe').contentWindow = {
+        document: seeAllDoc,
+        location: { hash: '#/' }
+    };
+    seeAllSb.elements['app-iframe'].onload();
+    seeAllSb.flushTimeouts(); // clear bootstrap
+
+    // Set active element to cardRow1 (has DOM focus)
+    seeAllDoc.activeElement = cardRow1;
+    cardRow1.focusCount = 0;
+    seeAllRow1.focusCount = 0;
+
+    // 1. last card Right -> same-row See All
+    var evRight1 = seeAllSb.triggerIframeKeydown('ArrowRight', 'ArrowRight', 39);
+    assert.ok(evRight1.defaultPrevented, 'ArrowRight on cardRow1 should be handled');
+    assert.strictEqual(seeAllRow1.focusCount, 1, 'Right on last card should focus same-row See All');
+
+    // 2. See All Left -> last card
+    seeAllDoc.activeElement = seeAllRow1;
+    cardRow1.focusCount = 0;
+    seeAllRow1.focusCount = 0;
+    var evLeft1 = seeAllSb.triggerIframeKeydown('ArrowLeft', 'ArrowLeft', 37);
+    assert.ok(evLeft1.defaultPrevented, 'ArrowLeft on See All should be handled');
+    assert.strictEqual(cardRow1.focusCount, 1, 'Left on See All should focus same-row card');
+
+    // 3. first-row See All Down -> second-row first card
+    seeAllDoc.activeElement = seeAllRow1;
+    cardRow2.focusCount = 0;
+    var evDown1 = seeAllSb.triggerIframeKeydown('ArrowDown', 'ArrowDown', 40);
+    assert.ok(evDown1.defaultPrevented, 'ArrowDown on See All should be handled');
+    assert.strictEqual(cardRow2.focusCount, 1, 'Down on See All should focus second-row first card');
+
+    // 4. second-row Up -> first-row first card
+    seeAllDoc.activeElement = seeAllRow2;
+    cardRow1.focusCount = 0;
+    var evUp1 = seeAllSb.triggerIframeKeydown('ArrowUp', 'ArrowUp', 38);
+    assert.ok(evUp1.defaultPrevented, 'ArrowUp on See All should be handled');
+    assert.strictEqual(cardRow1.focusCount, 1, 'Up on See All should focus first-row first card');
+
+    // 5. no-target Right passes through
+    seeAllDoc.activeElement = seeAllRow2;
+    var evRight2 = seeAllSb.triggerIframeKeydown('ArrowRight', 'ArrowRight', 39);
+    assert.strictEqual(evRight2.defaultPrevented, undefined, 'Right with no target should pass through');
+
+    // 6. Enter clicks
+    seeAllDoc.activeElement = seeAllRow1;
+    seeAllRow1.clickCount = 0;
+    var evEnter = seeAllSb.triggerIframeKeydown('Enter', 'Enter', 13);
+    assert.ok(evEnter.defaultPrevented, 'Enter on See All should be handled');
+    assert.strictEqual(seeAllRow1.clickCount, 1, 'Enter should click See All');
+
+    // Header graph tests
+    console.log('Running Test 11 - Header Graph Tests...');
+    var graphSb = createSandbox();
+    var graphDoc = graphSb.context.document.getElementById('app-iframe').contentDocument;
+    var graphApi = graphSb.context.window.__STREMIO_WEB_WRAPPER_POC__;
+
+    var mockHeader = { tagName: 'HEADER', getAttribute: function() { return null; } };
+    var searchEl = makeElement(graphDoc, 'INPUT', 'search', { id: 'search-input', type: 'search', parentElement: mockHeader }, { left: 100, top: 20, width: 200, height: 40 });
+    var fsEl = makeElement(graphDoc, 'BUTTON', 'Fullscreen', { id: 'fullscreen', parentElement: mockHeader }, { left: 400, top: 20, width: 80, height: 40 });
+    var profileEl = makeElement(graphDoc, 'DIV', 'Profile', { id: 'profile', parentElement: mockHeader }, { left: 800, top: 20, width: 60, height: 40 });
+    var boardEl = makeElement(graphDoc, 'A', 'Board', { href: '#/' }, { left: 10, top: 100, width: 100, height: 50 });
+    var cardEl = makeElement(graphDoc, 'A', 'Movie Card', { href: '#/detail/movie/tt1' }, { left: 200, top: 150, width: 150, height: 150 });
+
+    graphDoc.querySelectorAll = function() {
+        return [searchEl, fsEl, profileEl, boardEl, cardEl];
+    };
+    graphSb.context.document.getElementById('app-iframe').contentWindow = {
+        document: graphDoc,
+        location: { hash: '#/' }
+    };
+    graphSb.elements['app-iframe'].onload();
+    graphSb.flushTimeouts();
+
+    // 1. Board Up -> Search
+    graphDoc.activeElement = boardEl;
+    searchEl.focusCount = 0;
+    var evUp = graphSb.triggerIframeKeydown('ArrowUp', 'ArrowUp', 38);
+    assert.ok(evUp.defaultPrevented, 'Board Up to Search should be handled');
+    assert.strictEqual(searchEl.focusCount, 1, 'Focus should move to Search');
+
+    // 2. Search Left -> Home
+    graphDoc.activeElement = searchEl;
+    boardEl.focusCount = 0;
+    var evLeft = graphSb.triggerIframeKeydown('ArrowLeft', 'ArrowLeft', 37);
+    assert.ok(evLeft.defaultPrevented, 'Search Left should be handled');
+    assert.strictEqual(boardEl.focusCount, 1, 'Focus should move to Board');
+
+    // 3. Search Right -> Fullscreen
+    graphDoc.activeElement = searchEl;
+    fsEl.focusCount = 0;
+    var evRight = graphSb.triggerIframeKeydown('ArrowRight', 'ArrowRight', 39);
+    assert.ok(evRight.defaultPrevented, 'Search Right should be handled');
+    assert.strictEqual(fsEl.focusCount, 1, 'Focus should move to Fullscreen');
+
+    // 4. Search Up -> stops (remains on Search)
+    graphDoc.activeElement = searchEl;
+    searchEl.focusCount = 0;
+    var evUpSearch = graphSb.triggerIframeKeydown('ArrowUp', 'ArrowUp', 38);
+    assert.ok(evUpSearch.defaultPrevented, 'Search Up should stop and consume');
+    assert.strictEqual(searchEl.focusCount, 0, 'Focus should remain on Search');
+
+    // 5. Search Down -> first card
+    graphDoc.activeElement = searchEl;
+    cardEl.focusCount = 0;
+    var evDownSearch = graphSb.triggerIframeKeydown('ArrowDown', 'ArrowDown', 40);
+    assert.ok(evDownSearch.defaultPrevented, 'Search Down should be handled');
+    assert.strictEqual(cardEl.focusCount, 1, 'Focus should move to first content card');
+
+    // 6. Search Enter activates native search (not consumed)
+    graphDoc.activeElement = searchEl;
+    var evEnterSearch = graphSb.triggerIframeKeydown('Enter', 'Enter', 13);
+    assert.strictEqual(evEnterSearch.defaultPrevented, undefined, 'Search Enter must pass through natively');
+
+    // 7. Fullscreen Left -> Search
+    graphDoc.activeElement = fsEl;
+    searchEl.focusCount = 0;
+    var evFsLeft = graphSb.triggerIframeKeydown('ArrowLeft', 'ArrowLeft', 37);
+    assert.ok(evFsLeft.defaultPrevented, 'FS Left to Search should be handled');
+    assert.strictEqual(searchEl.focusCount, 1, 'Focus should move to Search');
+
+    // 8. Fullscreen Right -> Profile
+    graphDoc.activeElement = fsEl;
+    profileEl.focusCount = 0;
+    var evFsRight = graphSb.triggerIframeKeydown('ArrowRight', 'ArrowRight', 39);
+    assert.ok(evFsRight.defaultPrevented, 'FS Right to Profile should be handled');
+    assert.strictEqual(profileEl.focusCount, 1, 'Focus should move to Profile');
+
+    // 9. Fullscreen Up stops
+    graphDoc.activeElement = fsEl;
+    fsEl.focusCount = 0;
+    var evFsUp = graphSb.triggerIframeKeydown('ArrowUp', 'ArrowUp', 38);
+    assert.ok(evFsUp.defaultPrevented, 'FS Up should stop');
+    assert.strictEqual(fsEl.focusCount, 0);
+
+    // 10. Fullscreen Down -> card
+    graphDoc.activeElement = fsEl;
+    cardEl.focusCount = 0;
+    var evFsDown = graphSb.triggerIframeKeydown('ArrowDown', 'ArrowDown', 40);
+    assert.ok(evFsDown.defaultPrevented, 'FS Down should focus first card');
+    assert.strictEqual(cardEl.focusCount, 1);
+
+    // 11. Profile Left -> Fullscreen
+    graphDoc.activeElement = profileEl;
+    fsEl.focusCount = 0;
+    var evProfLeft = graphSb.triggerIframeKeydown('ArrowLeft', 'ArrowLeft', 37);
+    assert.ok(evProfLeft.defaultPrevented, 'Profile Left should focus FS');
+    assert.strictEqual(fsEl.focusCount, 1);
+
+    // 12. Profile Right stops
+    graphDoc.activeElement = profileEl;
+    profileEl.focusCount = 0;
+    var evProfRight = graphSb.triggerIframeKeydown('ArrowRight', 'ArrowRight', 39);
+    assert.ok(evProfRight.defaultPrevented, 'Profile Right should stop');
+    assert.strictEqual(profileEl.focusCount, 0);
+
+    // 13. Profile Down -> card
+    graphDoc.activeElement = profileEl;
+    cardEl.focusCount = 0;
+    var evProfDown = graphSb.triggerIframeKeydown('ArrowDown', 'ArrowDown', 40);
+    assert.ok(evProfDown.defaultPrevented, 'Profile Down should focus card');
+    assert.strictEqual(cardEl.focusCount, 1);
+
+    // Row tests
+    console.log('Running Test 11 - Row Tests...');
+    var rowSb = createSandbox();
+    var rowDoc = rowSb.context.document.getElementById('app-iframe').contentDocument;
+
+    var mockHeader = { tagName: 'HEADER', getAttribute: function() { return null; } };
+    var rowSearchEl = makeElement(rowDoc, 'INPUT', 'search', { id: 'search-input', type: 'search', parentElement: mockHeader }, { left: 100, top: 20, width: 200, height: 40 });
+    var rowBoardEl = makeElement(rowDoc, 'A', 'Board', { href: '#/' }, { left: 10, top: 100, width: 100, height: 50 });
+
+    // Row 1
+    var cardR1C1 = makeElement(rowDoc, 'A', 'Movie 1', { href: '#/detail/movie/r1c1' }, { left: 200, top: 100, width: 150, height: 150 });
+    var cardR1C2 = makeElement(rowDoc, 'A', 'Movie 2', { href: '#/detail/movie/r1c2' }, { left: 380, top: 100, width: 150, height: 150 });
+    var seeAllR1 = makeElement(rowDoc, 'A', 'See All', { href: '#/discover/r1' }, { left: 560, top: 100, width: 80, height: 40 });
+
+    // Row 2
+    var cardR2C1 = makeElement(rowDoc, 'A', 'Movie 3', { href: '#/detail/movie/r2c1' }, { left: 200, top: 280, width: 150, height: 150 });
+    var cardR2C2 = makeElement(rowDoc, 'A', 'Movie 4', { href: '#/detail/movie/r2c2' }, { left: 380, top: 280, width: 150, height: 150 });
+    var seeAllR2 = makeElement(rowDoc, 'A', 'See All', { href: '#/discover/r2' }, { left: 560, top: 280, width: 80, height: 40 });
+
+    rowDoc.querySelectorAll = function() {
+        return [rowSearchEl, rowBoardEl, cardR1C1, cardR1C2, seeAllR1, cardR2C1, cardR2C2, seeAllR2];
+    };
+    rowSb.context.document.getElementById('app-iframe').contentWindow = {
+        document: rowDoc,
+        location: { hash: '#/' }
+    };
+    rowSb.elements['app-iframe'].onload();
+    rowSb.flushTimeouts();
+
+    // 1. first-row card Up -> Search
+    rowDoc.activeElement = cardR1C2;
+    rowSearchEl.focusCount = 0;
+    var evRowUp = rowSb.triggerIframeKeydown('ArrowUp', 'ArrowUp', 38);
+    assert.ok(evRowUp.defaultPrevented, 'First row card Up should focus search');
+    assert.strictEqual(rowSearchEl.focusCount, 1);
+
+    // 2. first-card Left -> Home
+    rowDoc.activeElement = cardR1C1;
+    rowBoardEl.focusCount = 0;
+    var evRowLeft = rowSb.triggerIframeKeydown('ArrowLeft', 'ArrowLeft', 37);
+    assert.ok(evRowLeft.defaultPrevented, 'First card Left should focus Board/Home');
+    rowSb.flushTimeouts();
+    assert.strictEqual(rowBoardEl.focusCount, 1);
+
+    // 3. card -> See All -> next-row traversal
+    rowDoc.activeElement = cardR1C2;
+    seeAllR1.focusCount = 0;
+    var evCardRight = rowSb.triggerIframeKeydown('ArrowRight', 'ArrowRight', 39);
+    assert.ok(evCardRight.defaultPrevented, 'Last card Right should focus See All');
+    assert.strictEqual(seeAllR1.focusCount, 1);
+
+    rowDoc.activeElement = seeAllR1;
+    cardR2C1.focusCount = 0;
+    var evSeeAllRight = rowSb.triggerIframeKeydown('ArrowRight', 'ArrowRight', 39);
+    assert.ok(evSeeAllRight.defaultPrevented, 'See All Right should focus first card of next row');
+    assert.strictEqual(cardR2C1.focusCount, 1);
+
+    // 4. See All Left -> that row's last card
+    rowDoc.activeElement = seeAllR1;
+    cardR1C2.focusCount = 0;
+    var evSeeAllLeft = rowSb.triggerIframeKeydown('ArrowLeft', 'ArrowLeft', 37);
+    assert.ok(evSeeAllLeft.defaultPrevented, 'See All Left should focus same-row last card');
+    assert.strictEqual(cardR1C2.focusCount, 1);
+
+    // 5. topmost See All Up -> Search
+    rowDoc.activeElement = seeAllR1;
+    rowSearchEl.focusCount = 0;
+    var evSeeAllUp1 = rowSb.triggerIframeKeydown('ArrowUp', 'ArrowUp', 38);
+    assert.ok(evSeeAllUp1.defaultPrevented, 'Topmost See All Up should focus Search');
+    assert.strictEqual(rowSearchEl.focusCount, 1);
+
+    // 6. other See All Up/Down -> adjacent row first card
+    rowDoc.activeElement = seeAllR2;
+    cardR1C1.focusCount = 0;
+    var evSeeAllUp2 = rowSb.triggerIframeKeydown('ArrowUp', 'ArrowUp', 38);
+    assert.ok(evSeeAllUp2.defaultPrevented, 'Row 2 See All Up should focus Row 1 first card');
+    assert.strictEqual(cardR1C1.focusCount, 1);
+
+    rowDoc.activeElement = seeAllR1;
+    cardR2C1.focusCount = 0;
+    var evSeeAllDown = rowSb.triggerIframeKeydown('ArrowDown', 'ArrowDown', 40);
+    assert.ok(evSeeAllDown.defaultPrevented, 'Row 1 See All Down should focus Row 2 first card');
+    assert.strictEqual(cardR2C1.focusCount, 1);
+
+    // Detail page tests
+    console.log('Running Test 11 - Detail page tests...');
+    var detailSb = createSandbox();
+    var detailDoc = detailSb.context.document.getElementById('app-iframe').contentDocument;
+    var detailApi = detailSb.context.window.__STREMIO_WEB_WRAPPER_POC__;
+
+    var detailPlayBtn = makeElement(detailDoc, 'BUTTON', 'Play', {}, { left: 100, top: 200, width: 150, height: 50 });
+    var detailSource1 = makeElement(detailDoc, 'A', '1080p Torrent', {}, { left: 600, top: 200, width: 300, height: 50 });
+    var detailSource2 = makeElement(detailDoc, 'A', '720p stream', {}, { left: 600, top: 270, width: 300, height: 50 });
+
+    detailDoc.querySelectorAll = function() {
+        return [detailPlayBtn, detailSource1, detailSource2];
+    };
+    detailSb.context.document.getElementById('app-iframe').contentWindow = {
+        document: detailDoc,
+        location: { hash: '#/detail/movie/tt12345' }
+    };
+    detailSb.elements['app-iframe'].onload();
+    detailDoc.activeElement = null;
+    detailSb.flushTimeouts();
+
+    // Verify detail bootstrap focuses the top item in the right-hand source list (detailSource1)
+    assert.strictEqual(detailSource1.focusCount, 1, 'Detail bootstrap should focus the topmost stream source filter');
+    assert.strictEqual(detailPlayBtn.focusCount, 0, 'Detail bootstrap must not focus the Play button');
+
+    // Editable / Back / Repeat tests
+    console.log('Running Test 11 - Editable, Back and Repeat tests...');
+    var editSb = createSandbox();
+    var editDoc = editSb.context.document.getElementById('app-iframe').contentDocument;
+    var editApi = editSb.context.window.__STREMIO_WEB_WRAPPER_POC__;
+
+    var mockHeader = { tagName: 'HEADER', getAttribute: function() { return null; } };
+    var editSearchEl = makeElement(editDoc, 'INPUT', 'search text', { id: 'search-input', type: 'search', parentElement: mockHeader }, { left: 100, top: 20, width: 200, height: 40 });
+    var editBoardEl = makeElement(editDoc, 'A', 'Board', { href: '#/' }, { left: 10, top: 100, width: 100, height: 50 });
+    var editFsEl = makeElement(editDoc, 'BUTTON', 'Fullscreen', { parentElement: mockHeader }, { left: 400, top: 20, width: 80, height: 40 });
+
+    editDoc.querySelectorAll = function() {
+        return [editSearchEl, editBoardEl, editFsEl];
+    };
+    editSb.context.document.getElementById('app-iframe').contentWindow = {
+        document: editDoc,
+        location: { hash: '#/discover' },
+        history: {
+            backCount: 0,
+            back: function() { this.backCount++; }
+        }
+    };
+    editSb.elements['app-iframe'].onload();
+    editSb.flushTimeouts();
+
+    // 1. Directional keys always perform TV navigation even when focused in Search input
+    editDoc.activeElement = editSearchEl;
+    editFsEl.focusCount = 0;
+    var evRightEdit = editSb.triggerIframeKeydown('ArrowRight', 'ArrowRight', 39);
+    assert.ok(evRightEdit.defaultPrevented, 'ArrowRight on search input should perform TV navigation');
+    assert.strictEqual(editFsEl.focusCount, 1, 'ArrowRight on search input focuses Fullscreen');
+
+    // 2. Digit1 typing versus global toggle
+    editDoc.activeElement = editSearchEl;
+    assert.strictEqual(editApi.getState().diagnosticsOpen, false);
+    var evOneEdit = editSb.triggerIframeKeydown('1', 'Digit1', 49);
+    assert.strictEqual(evOneEdit.defaultPrevented, undefined, 'Digit1 key must pass through for typing when editing');
+    assert.strictEqual(editApi.getState().diagnosticsOpen, false, 'Digit1 must not toggle diagnostics when editing');
+
+    // 3. Back dismissing editing before history navigation
+    editDoc.activeElement = editSearchEl;
+    editSearchEl.blurCount = 0;
+    var evBackEdit = editSb.triggerKeydown('Back', 'Back', 10009);
+    assert.ok(evBackEdit.defaultPrevented, 'Back key should be consumed when dismissing editing');
+    assert.strictEqual(editSearchEl.blurCount, 1, 'Back key blurs the active input element');
+    assert.strictEqual(editSb.context.document.getElementById('app-iframe').contentWindow.history.backCount, 0, 'Back key does not trigger route back when editing');
+
+    // Next press performs normal history back
+    editDoc.activeElement = editBoardEl;
+    var evBackHistory = editSb.triggerKeydown('Back', 'Back', 10009);
+    assert.ok(evBackHistory.defaultPrevented);
+    assert.strictEqual(editSb.context.document.getElementById('app-iframe').contentWindow.history.backCount, 1, 'Next Back key navigates history');
+
+    // System-key tests
+    console.log('Running Test 11 - System-key tests...');
+    var sysSb = createSandbox();
+    var sysDoc = sysSb.context.document.getElementById('app-iframe').contentDocument;
+    var sysApi = sysSb.context.window.__STREMIO_WEB_WRAPPER_POC__;
+
+    var sysBoardEl = makeElement(sysDoc, 'A', 'Board', { href: '#/' }, { left: 10, top: 100, width: 100, height: 50 });
+    var sysDiscoverEl = makeElement(sysDoc, 'A', 'Discover', { href: '#/discover' }, { left: 10, top: 160, width: 100, height: 50 });
+
+    sysDoc.querySelectorAll = function() { return [sysBoardEl, sysDiscoverEl]; };
+    sysSb.context.document.getElementById('app-iframe').contentWindow = {
+        document: sysDoc,
+        location: { hash: '#/' }
+    };
+    sysSb.elements['app-iframe'].onload();
+    sysSb.flushTimeouts();
+
+    // 1. Controlled repeat
+    sysDoc.activeElement = sysBoardEl;
+    sysDiscoverEl.focusCount = 0;
+    var evRepeat1 = sysSb.triggerIframeKeydown('ArrowDown', 'ArrowDown', 40);
+    assert.ok(evRepeat1.defaultPrevented);
+    assert.strictEqual(sysDiscoverEl.focusCount, 1);
+
+    // Immediate repeat key event (e.g. 50ms later) should be ignored
+    var evRepeat2 = sysSb.triggerIframeKeydown('ArrowDown', 'ArrowDown', 40, true);
+    assert.ok(evRepeat2.defaultPrevented, 'Repeat event should still be consumed');
+    assert.strictEqual(sysDiscoverEl.focusCount, 1, 'Repeat event must not trigger a second move / focus');
+
+    // 2. Volume/mute keys do not end up in keyEventsLog
+    var logLenBefore = sysApi.getState().keyEventsLog ? sysApi.getState().keyEventsLog.length : 0;
+    sysSb.triggerKeydown('VolumeUp', 'VolumeUp', 447);
+    sysSb.triggerKeydown('VolumeDown', 'VolumeDown', 448);
+    sysSb.triggerKeydown('VolumeMute', 'VolumeMute', 449);
+    var logLenAfter = sysApi.getState().keyEventsLog ? sysApi.getState().keyEventsLog.length : 0;
+    assert.strictEqual(logLenAfter, logLenBefore, 'Volume/mute keys must not be pushed into keyEventsLog');
+
+    // 3. Transport keys passed through without navigation
+    var evPlay = sysSb.triggerIframeKeydown('Play', 'MediaPlay', 250);
+    assert.strictEqual(evPlay.defaultPrevented, undefined, 'Play transport key should pass through natively');
+
+    console.log('[PASS] Test 11: Cold-start focus bootstrap and BODY fallbacks passed');
+})();
+
+// Test 12: Non-root Route Card Left preference for Home/Board
+(function() {
+    console.log('Running Test 12: Non-root Route Card Left preference for Home/Board...');
+    var sb = createSandbox();
+    var api = sb.context.window.__STREMIO_WEB_WRAPPER_POC__;
+    var iframe = sb.elements['app-iframe'];
+    iframe.onload();
+    var doc = iframe.contentWindow.document;
+    iframe.contentWindow.location = { hash: '#/discover' };
+
+    function makeElement(tagName, text, attrs, rect) {
+        attrs = attrs || {};
+        return {
+            tagName: tagName,
+            innerText: text || '',
+            textContent: text || '',
+            className: attrs.className || '',
+            disabled: false,
+            parentElement: attrs.parentElement || null,
+            getAttribute: function(name) {
+                if (name === 'class') return this.className;
+                return Object.prototype.hasOwnProperty.call(attrs, name) ? attrs[name] : null;
+            },
+            getBoundingClientRect: function() { return rect; },
+            focus: function() { this.focused = true; this.focusCount = (this.focusCount || 0) + 1; },
+            click: function() { this.clicked = true; this.clickCount = (this.clickCount || 0) + 1; }
+        };
+    }
+
+    var sidebarBoard = makeElement('A', 'Board', { href: '#/' },
+        { left: 10, top: 100, width: 100, height: 50 });
+    var sidebarDiscover = makeElement('A', 'Discover', { href: '#/discover', 'aria-current': 'page' },
+        { left: 10, top: 160, width: 100, height: 50 });
+    var firstCard = makeElement('A', 'Movie Card', {
+        href: '#/detail/movie/tt123', 'aria-selected': 'true'
+    }, { left: 200, top: 100, width: 150, height: 150 });
+
+    var candidates = [sidebarBoard, sidebarDiscover, firstCard];
+    doc.querySelectorAll = function() {
+        return candidates;
+    };
+
+    doc.activeElement = firstCard;
+    var leftEvent = sb.triggerIframeKeydown('ArrowLeft', 'ArrowLeft', 37);
+    assert.ok(leftEvent.defaultPrevented);
+    sb.flushTimeouts();
+    assert.strictEqual(sidebarBoard.focusCount, 1, 'First-card Left on non-root route must focus Home/Board rather than current Discover');
+    assert.strictEqual(sidebarDiscover.focusCount, undefined, 'First-card Left must not focus Discover when Home/Board is present');
+    console.log('[PASS] Test 12: Non-root Route Card Left preference passed');
+})();
+
+// Test 13: Detail route focus transition test
+(function() {
+    console.log('Running Test 13: Detail route focus transition...');
+    var sb = createSandbox();
+    var api = sb.context.window.__STREMIO_WEB_WRAPPER_POC__;
+    var iframe = sb.elements['app-iframe'];
+    iframe.onload();
+    var doc = iframe.contentWindow.document;
+
+    function makeElement(tagName, text, attrs, rect) {
+        attrs = attrs || {};
+        return {
+            tagName: tagName,
+            innerText: text || '',
+            textContent: text || '',
+            className: attrs.className || '',
+            disabled: false,
+            parentElement: attrs.parentElement || null,
+            focusCount: 0,
+            clickCount: 0,
+            getAttribute: function(name) {
+                if (name === 'class') return this.className;
+                return Object.prototype.hasOwnProperty.call(attrs, name) ? attrs[name] : null;
+            },
+            getBoundingClientRect: function() { return rect; },
+            focus: function() {
+                this.focusCount++;
+                doc.activeElement = this;
+            },
+            click: function() {
+                this.clickCount++;
+            }
+        };
+    }
+
+    var card = makeElement('A', 'Movie Card', { href: '#/detail/movie/tt123' }, { left: 200, top: 100, width: 150, height: 150 });
+    doc.querySelectorAll = function() { return [card]; };
+    doc.activeElement = card;
+
+    // Press Enter to activate card
+    var enterEvent = sb.triggerIframeKeydown('Enter', 'Enter', 13);
+    assert.ok(enterEvent.defaultPrevented, 'Enter on card should be handled');
+
+    // Now simulate loading detail page: update hash and queryAll candidates
+    iframe.contentWindow.location = { hash: '#/detail/movie/tt123' };
+    var detailPlayBtn = makeElement('BUTTON', 'Play', {}, { left: 100, top: 200, width: 150, height: 50 });
+    var detailSource = makeElement('A', '1080p stream', {}, { left: 600, top: 200, width: 300, height: 50 });
+
+    doc.querySelectorAll = function() { return [detailPlayBtn, detailSource]; };
+    doc.activeElement = null; // simulate page rendering/loading with null focus
+
+    // Flush timeouts to run the detail focus retry attempts
+    sb.flushTimeouts();
+
+    assert.strictEqual(detailSource.focusCount, 1, 'Detail source filter should be focused after card activation transition');
+    assert.strictEqual(doc.activeElement, detailSource, 'Active element should be set to detail source');
+    console.log('[PASS] Test 13: Detail route focus transition passed');
+})();
+
+// Test 14: Exit key pass-through test
+(function() {
+    console.log('Running Test 14: Exit key pass-through...');
+    var sb = createSandbox();
+
+    var event = sb.triggerKeydown('Exit', 'Exit', 10182);
+    assert.strictEqual(event.defaultPrevented, undefined, 'Exit key event must not be prevented');
+
+    var iframeEvent = sb.triggerIframeKeydown('Exit', 'Exit', 10182);
+    assert.strictEqual(iframeEvent.defaultPrevented, undefined, 'Exit key event inside iframe must not be prevented');
+    console.log('[PASS] Test 14: Exit key pass-through passed');
+})();
+
+// Test 15: Search Boundary Selector and Marking Regression
+(function() {
+    console.log('Running Test 15: Search Boundary Selector and Marking Regression...');
+    var sb = createSandbox();
+    var doc = sb.context.document.getElementById('app-iframe').contentDocument;
+    var api = sb.context.window.__STREMIO_WEB_WRAPPER_POC__;
+
+    // Shared horizontal NAV boundary
+    var mockNav = {
+        tagName: 'NAV',
+        getAttribute: function(name) { return null; },
+        parentElement: null
+    };
+
+    // Sibling containers under NAV
+    var searchContainer = {
+        tagName: 'DIV',
+        innerText: 'Search or paste link',
+        textContent: 'Search or paste link',
+        getAttribute: function(name) { return this[name] || null; },
+        setAttribute: function(name, val) { this[name] = val; },
+        parentElement: mockNav
+    };
+
+    var fsContainer = {
+        tagName: 'DIV',
+        innerText: '',
+        textContent: '',
+        getAttribute: function(name) { return this[name] || null; },
+        setAttribute: function(name, val) { this[name] = val; },
+        parentElement: mockNav
+    };
+
+    var profileContainer = {
+        tagName: 'DIV',
+        innerText: '',
+        textContent: '',
+        getAttribute: function(name) { return this[name] || null; },
+        setAttribute: function(name, val) { this[name] = val; },
+        parentElement: mockNav
+    };
+
+    // Helper to make test elements
+    function makeElement(targetDoc, tagName, text, attrs, rect) {
+        attrs = attrs || {};
+        return {
+            tagName: tagName,
+            innerText: text || '',
+            textContent: text || '',
+            className: attrs.className || '',
+            disabled: false,
+            parentElement: attrs.parentElement || null,
+            focused: false,
+            focusCount: 0,
+            clicked: false,
+            clickCount: 0,
+            blurCount: 0,
+            getAttribute: function(name) {
+                if (name === 'class') return this.className;
+                return Object.prototype.hasOwnProperty.call(attrs, name) ? attrs[name] : null;
+            },
+            setAttribute: function(name, val) {
+                this[name] = val;
+            },
+            getBoundingClientRect: function() { return rect; },
+            focus: function() {
+                this.focused = true;
+                this.focusCount++;
+                if (targetDoc) targetDoc.activeElement = this;
+            },
+            blur: function() {
+                this.focused = false;
+                this.blurCount++;
+                if (targetDoc && targetDoc.activeElement === this) targetDoc.activeElement = null;
+            },
+            click: function() {
+                this.clicked = true;
+                this.clickCount++;
+            }
+        };
+    }
+
+    // Sibling targets
+    var searchTarget = makeElement(doc, 'DIV', '', { tabindex: '0', parentElement: searchContainer }, { left: 100, top: 20, width: 200, height: 40 });
+    var fsTarget = makeElement(doc, 'DIV', '', { tabindex: '-1', title: 'Enter fullscreen mode', parentElement: fsContainer }, { left: 400, top: 20, width: 80, height: 40 });
+    var profileTarget = makeElement(doc, 'DIV', '', { tabindex: '-1', parentElement: profileContainer }, { left: 800, top: 20, width: 60, height: 40 });
+
+    var boardEl = makeElement(doc, 'A', 'Board', { href: '#/' }, { left: 10, top: 100, width: 100, height: 50 });
+    var cardEl = makeElement(doc, 'A', 'Movie Card', { href: '#/detail/movie/tt1' }, { left: 200, top: 150, width: 150, height: 150 });
+
+    var candidates = [searchTarget, fsTarget, profileTarget, boardEl, cardEl];
+    doc.querySelectorAll = function() {
+        return candidates;
+    };
+    sb.context.document.getElementById('app-iframe').contentWindow = {
+        document: doc,
+        location: { hash: '#/' }
+    };
+
+    // Trigger iframe onload to clear bootstrap
+    sb.elements['app-iframe'].onload();
+    sb.flushTimeouts();
+
+    // Assert Board Up -> Search
+    doc.activeElement = boardEl;
+    searchTarget.focusCount = 0;
+    var evUp = sb.triggerIframeKeydown('ArrowUp', 'ArrowUp', 38);
+    assert.ok(evUp.defaultPrevented, 'Board Up to Search should be handled');
+    assert.strictEqual(searchTarget.focusCount, 1, 'Board Up should focus Search');
+    assert.strictEqual(api.getState().lastNavigation, 'home-to-search', 'lastNavigation should be home-to-search');
+
+    // Assert Search Right -> Fullscreen
+    doc.activeElement = searchTarget;
+    fsTarget.focusCount = 0;
+    var evRight1 = sb.triggerIframeKeydown('ArrowRight', 'ArrowRight', 39);
+    assert.ok(evRight1.defaultPrevented, 'Search Right to Fullscreen should be handled');
+    assert.strictEqual(fsTarget.focusCount, 1, 'Search Right should focus Fullscreen');
+    assert.strictEqual(api.getState().lastNavigation, 'search-to-fullscreen', 'lastNavigation should be search-to-fullscreen');
+
+    // Assert Fullscreen Right -> Profile (proves Fullscreen is not classified as Search)
+    doc.activeElement = fsTarget;
+    profileTarget.focusCount = 0;
+    var evRight2 = sb.triggerIframeKeydown('ArrowRight', 'ArrowRight', 39);
+    assert.ok(evRight2.defaultPrevented, 'Fullscreen Right to Profile should be handled');
+    assert.strictEqual(profileTarget.focusCount, 1, 'Fullscreen Right should focus Profile');
+    assert.strictEqual(api.getState().lastNavigation, 'fullscreen-to-profile', 'lastNavigation should be fullscreen-to-profile');
+
+    // Assert Profile Left -> Fullscreen (proves Profile is not classified as Search)
+    doc.activeElement = profileTarget;
+    fsTarget.focusCount = 0;
+    var evLeft1 = sb.triggerIframeKeydown('ArrowLeft', 'ArrowLeft', 37);
+    assert.ok(evLeft1.defaultPrevented, 'Profile Left should be handled');
+    assert.strictEqual(fsTarget.focusCount, 1, 'Profile Left should focus Fullscreen');
+    assert.strictEqual(api.getState().lastNavigation, 'profile-to-fullscreen', 'lastNavigation should be profile-to-fullscreen');
+
+    // Verify marking of the semantic below-boundary Search container with data-search-container
+    assert.strictEqual(searchContainer['data-search-container'], 'true', 'Direct descendant container should be marked after load');
+
+    // Clear and manually trigger marking
+    delete searchContainer['data-search-container'];
+    assert.strictEqual(searchContainer['data-search-container'], undefined, 'Cleared');
+    sb.elements['app-iframe'].onload();
+    assert.strictEqual(searchContainer['data-search-container'], 'true', 'Direct descendant container should be marked');
+    assert.strictEqual(fsContainer['data-search-container'], undefined, 'Fullscreen container should NOT be marked');
+    assert.strictEqual(profileContainer['data-search-container'], undefined, 'Profile container should NOT be marked');
+
+    console.log('[PASS] Test 15: Search Boundary Selector and Marking Regression passed');
+})();
+
+// Test 16: Detail source-group fallback regression
+(function() {
+    console.log('Running Test 16: Detail source-group fallback regression...');
+
+    function createDetailFixture() {
+        var sb = createSandbox();
+        var iframe = sb.elements['app-iframe'];
+        var doc = iframe.contentWindow.document;
+
+        function makeNode(tagName, text, attrs, rect) {
+            attrs = attrs || {};
+            return {
+                tagName: tagName,
+                innerText: text || '',
+                textContent: text || '',
+                id: attrs.id || '',
+                className: '',
+                parentElement: attrs.parentElement || null,
+                disabled: false,
+                focusCount: 0,
+                getAttribute: function(name) {
+                    return Object.prototype.hasOwnProperty.call(attrs, name) ? attrs[name] : null;
+                },
+                getBoundingClientRect: function() { return rect; },
+                focus: function() {
+                    this.focusCount++;
+                    doc.activeElement = this;
+                }
+            };
+        }
+
+        iframe.contentWindow = {
+            document: doc,
+            location: { hash: '#/detail/movie/tt-live-proof' }
+        };
+        return { sb: sb, iframe: iframe, doc: doc, makeNode: makeNode };
+    }
+
+    // No-stream state: ignore viewport overlays/uploads and focus Install addons.
+    var noStream = createDetailFixture();
+    var noStreamGroup = noStream.makeNode('DIV', 'No streams were found Install addons', {},
+        { left: 560, top: 120, width: 360, height: 400 });
+    var fileInput = noStream.makeNode('INPUT', '', { type: 'file', parentElement: noStreamGroup },
+        { left: 0, top: 0, width: 1000, height: 700 });
+    var emptyOverlay = noStream.makeNode('DIV', '', { tabindex: '0', parentElement: noStreamGroup },
+        { left: 0, top: 0, width: 1000, height: 700 });
+    var trailer = noStream.makeNode('A', 'Trailer', { href: 'https://example.invalid/trailer' },
+        { left: 100, top: 180, width: 220, height: 45 });
+    var noStreamStatus = noStream.makeNode('DIV', 'No streams were found', {
+        tabindex: '0', parentElement: noStreamGroup
+    }, { left: 600, top: 170, width: 280, height: 40 });
+    var installAddons = noStream.makeNode('A', 'Install addons', {
+        href: '#/addons', parentElement: noStreamGroup
+    }, { left: 600, top: 230, width: 280, height: 50 });
+    noStream.doc.querySelectorAll = function() {
+        return [fileInput, emptyOverlay, trailer, noStreamStatus, installAddons];
+    };
+    noStream.doc.activeElement = null;
+    noStream.iframe.onload();
+    noStream.sb.flushTimeouts();
+    assert.strictEqual(installAddons.focusCount, 1, 'No-stream detail should focus Install addons');
+    assert.strictEqual(fileInput.focusCount, 0, 'Full-screen file input must be excluded');
+    assert.strictEqual(emptyOverlay.focusCount, 0, 'Semantic-empty viewport control must be excluded');
+    assert.strictEqual(trailer.focusCount, 0, 'Left metadata must not win detail focus');
+    assert.strictEqual(noStreamStatus.focusCount, 0, 'No-stream status text is not an action');
+
+    // Source state: semantic ancestry identifies the group and its top filter wins.
+    var withSources = createDetailFixture();
+    var sourceGroup = withSources.makeNode('SECTION', 'Streams and sources', { role: 'list' },
+        { left: 560, top: 110, width: 360, height: 450 });
+    var metadataLink = withSources.makeNode('A', 'Cast and crew', { href: '#/person/example' },
+        { left: 90, top: 140, width: 240, height: 45 });
+    var sourceFilter = withSources.makeNode('DIV', 'All', {
+        tabindex: '0', role: 'combobox', parentElement: sourceGroup
+    }, { left: 600, top: 145, width: 280, height: 45 });
+    var sourceAction = withSources.makeNode('A', '1080p stream', {
+        href: '#/play/source', parentElement: sourceGroup
+    }, { left: 620, top: 220, width: 240, height: 50 });
+    withSources.doc.querySelectorAll = function() {
+        return [metadataLink, sourceFilter, sourceAction];
+    };
+    withSources.doc.activeElement = null;
+    withSources.iframe.onload();
+    withSources.sb.flushTimeouts();
+    assert.strictEqual(sourceFilter.focusCount, 1, 'Source group should prefer its top filter');
+    assert.strictEqual(sourceAction.focusCount, 0, 'Lower source action should not beat top filter');
+    assert.strictEqual(metadataLink.focusCount, 0, 'Left metadata must remain excluded');
+
+    // With no semantic source/stream group, detail bootstrap must focus nothing unrelated.
+    var noGroup = createDetailFixture();
+    var unrelatedFile = noGroup.makeNode('INPUT', '', { type: 'file' },
+        { left: 0, top: 0, width: 1000, height: 700 });
+    var unrelatedTrailer = noGroup.makeNode('A', 'Trailer', { href: '#/detail/series/unrelated' },
+        { left: 100, top: 170, width: 220, height: 45 });
+    unrelatedTrailer.className = 'selected';
+    var unrelatedPlay = noGroup.makeNode('BUTTON', 'Play', {},
+        { left: 100, top: 230, width: 220, height: 50 });
+    noGroup.doc.querySelectorAll = function() {
+        return [unrelatedFile, unrelatedTrailer, unrelatedPlay];
+    };
+    noGroup.doc.activeElement = null;
+    noGroup.iframe.onload();
+    noGroup.sb.flushTimeouts();
+    assert.strictEqual(noGroup.doc.activeElement, null, 'Missing source group should leave focus unchanged');
+    assert.strictEqual(unrelatedFile.focusCount, 0);
+    assert.strictEqual(unrelatedTrailer.focusCount, 0, 'Unrelated metadata must not receive fallback focus');
+    assert.strictEqual(unrelatedPlay.focusCount, 0, 'Unrelated left action must not receive fallback focus');
+
+    console.log('[PASS] Test 16: Detail source-group fallback regression passed');
 })();
 
 console.log('All tests passed successfully!');
