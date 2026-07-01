@@ -508,6 +508,10 @@
                 clearTimeout(this._profileMenuFocusTimeoutId);
                 this._profileMenuFocusTimeoutId = null;
             }
+            if (this._settingsFocusTimeoutId) {
+                clearTimeout(this._settingsFocusTimeoutId);
+                this._settingsFocusTimeoutId = null;
+            }
         },
         destroy: function() {
             this.enabled = false;
@@ -519,6 +523,10 @@
             if (this._profileMenuFocusTimeoutId) {
                 clearTimeout(this._profileMenuFocusTimeoutId);
                 this._profileMenuFocusTimeoutId = null;
+            }
+            if (this._settingsFocusTimeoutId) {
+                clearTimeout(this._settingsFocusTimeoutId);
+                this._settingsFocusTimeoutId = null;
             }
         },
         getIframeDoc: function() {
@@ -970,6 +978,107 @@
             return labels.indexOf(text) !== -1 || labels.indexOf(title) !== -1 ||
                 labels.indexOf(ariaLabel) !== -1;
         },
+        isSettingsRoute: function() {
+            var route = this.getRouteHash().split('?')[0];
+            return route === '#/settings' || route.indexOf('#/settings/') === 0;
+        },
+        isSettingsSidebarControl: function(el) {
+            if (!el || !el.getAttribute) return false;
+            return (el.getAttribute('href') || '').split('?')[0] === '#/settings' &&
+                this.isSidebarElement(el);
+        },
+        isSettingsLoginAction: function(el) {
+            if (!this.isExactLoginAction(el) || !el.getAttribute) return false;
+            return (el.getAttribute('href') || '').split('?')[0] === '#/intro';
+        },
+        findSettingsLoginAction: function(candidates) {
+            for (var i = 0; i < candidates.length; i++) {
+                if (this.isSettingsLoginAction(candidates[i])) return candidates[i];
+            }
+            return null;
+        },
+        isEffectivelyDisabled: function(el) {
+            var node = el;
+            var depth = 0;
+            while (node && depth < 6) {
+                var className = (' ' + (node.className || '') + ' ').toLowerCase();
+                var ariaDisabled = node.getAttribute ? node.getAttribute('aria-disabled') : null;
+                if (node.disabled || ariaDisabled === 'true' ||
+                    /(^|[\s_-])disabled([\s_-]|$)/.test(className)) {
+                    return true;
+                }
+                node = node.parentElement;
+                depth++;
+            }
+            var tabIndex = el && el.getAttribute ? el.getAttribute('tabindex') : null;
+            return tabIndex === '-1' && this.getElementText(el).indexOf('authenticate') !== -1;
+        },
+        isSettingsPageControl: function(el, candidates) {
+            if (!el || this.isSidebarElement(el) || this.isSearchElement(el) ||
+                this.isFullscreenElement(el) || this.isProfileElement(el, candidates) ||
+                this.isHiddenOrUploadControl(el)) {
+                return false;
+            }
+            return !this.isEffectivelyDisabled(el);
+        },
+        getSettingsPageControls: function(candidates) {
+            var controls = [];
+            for (var i = 0; i < candidates.length; i++) {
+                if (this.isSettingsPageControl(candidates[i], candidates)) controls.push(candidates[i]);
+            }
+            return controls;
+        },
+        isSettingsInternalNavControl: function(el) {
+            if (!el) return false;
+            var href = el.getAttribute ? (el.getAttribute('href') || '').split('?')[0] : '';
+            if (href.indexOf('#/settings/') === 0) return true;
+            var node = el.parentElement;
+            while (node) {
+                var className = (node.className || '').toLowerCase();
+                if (className.indexOf('settings-menu') !== -1 ||
+                    className.indexOf('settings-nav') !== -1) return true;
+                node = node.parentElement;
+            }
+            return false;
+        },
+        isSettingsValueControl: function(el) {
+            if (!el) return false;
+            var className = (el.className || '').toLowerCase();
+            var tag = (el.tagName || '').toLowerCase();
+            var role = el.getAttribute ? (el.getAttribute('role') || '').toLowerCase() : '';
+            return className.indexOf('multiselect') !== -1 || className.indexOf('toggle') !== -1 ||
+                className.indexOf('color-input') !== -1 || className.indexOf('radio') !== -1 ||
+                className.indexOf('add-url') !== -1 || className.indexOf('reload') !== -1 ||
+                tag === 'select' || role === 'combobox' || role === 'switch' ||
+                role === 'checkbox' || role === 'radio';
+        },
+        findFirstSettingsValueControl: function(controls) {
+            var values = [];
+            for (var i = 0; i < controls.length; i++) {
+                if (this.isSettingsValueControl(controls[i])) values.push(controls[i]);
+            }
+            values.sort(function(a, b) {
+                var ar = getRect(a);
+                var br = getRect(b);
+                if (Math.abs(ar.top - br.top) < 12) return ar.left - br.left;
+                return ar.top - br.top;
+            });
+            return values.length > 0 ? values[0] : null;
+        },
+        findSettingsInternalNavTarget: function(anchorEl, controls, keyCode) {
+            var navControls = [];
+            for (var i = 0; i < controls.length; i++) {
+                if (this.isSettingsInternalNavControl(controls[i])) navControls.push(controls[i]);
+            }
+            if (navControls.length === 0) return null;
+            return this.findBestSpatial(getRect(anchorEl), navControls, keyCode) || navControls[0];
+        },
+        cancelSettingsFocusRetry: function() {
+            if (this._settingsFocusTimeoutId) {
+                clearTimeout(this._settingsFocusTimeoutId);
+                this._settingsFocusTimeoutId = null;
+            }
+        },
         findPopupMenuLoginAction: function(anchorEl, candidates) {
             var actions = [];
             for (var i = 0; i < candidates.length; i++) {
@@ -1290,6 +1399,10 @@
             if (this.getRouteHash().indexOf('#/detail/') !== -1) {
                 return this.findDetailSourceFilter(candidates);
             }
+            if (this.isSettingsRoute()) {
+                var settingsLogin = this.findSettingsLoginAction(candidates);
+                if (settingsLogin) return settingsLogin;
+            }
             var selectedContent = this.getSelectedContent(candidates);
             if (selectedContent) return selectedContent;
             return this.findRouteSidebar(candidates);
@@ -1466,6 +1579,53 @@
 
             self._profileMenuFocusTimeoutId = setTimeout(attemptFocus, 100);
         },
+        scheduleSettingsFocusRetry: function() {
+            var self = this;
+            var attempts = 0;
+            var maxAttempts = 12;
+            var reachedSettingsRoute = false;
+
+            this.cancelSettingsFocusRetry();
+
+            function attemptFocus() {
+                if (!self.enabled) return;
+                if (!self.isSettingsRoute()) {
+                    if (reachedSettingsRoute) {
+                        self._settingsFocusTimeoutId = null;
+                        return;
+                    }
+                    reschedule();
+                    return;
+                }
+                reachedSettingsRoute = true;
+                var doc = self.getIframeDoc();
+                var candidates = self.getFocusableElements(doc);
+                var loginAction = self.findSettingsLoginAction(candidates);
+                if (loginAction && typeof loginAction.focus === 'function') {
+                    try {
+                        if (doc.activeElement !== loginAction) loginAction.focus();
+                        if (doc.activeElement === loginAction) {
+                            state.lastNavigation = 'settings-route-focus-login';
+                            refreshDiagnostics(true);
+                        }
+                    } catch (e) {
+                        // Retry while the settings route is mounting.
+                    }
+                }
+                reschedule();
+            }
+
+            function reschedule() {
+                attempts++;
+                if (attempts < maxAttempts) {
+                    self._settingsFocusTimeoutId = setTimeout(attemptFocus, 100);
+                } else {
+                    self._settingsFocusTimeoutId = null;
+                }
+            }
+
+            self._settingsFocusTimeoutId = setTimeout(attemptFocus, 100);
+        },
         handleKey: function(event) {
             if (!this.enabled) return false;
 
@@ -1601,6 +1761,7 @@
                 if (logicalActiveEl && typeof logicalActiveEl.click === 'function') {
                     var isCard = contentCards.indexOf(logicalActiveEl) !== -1;
                     var isProfile = this.isProfileElement(logicalActiveEl, candidates);
+                    var isSettingsEntry = this.isSettingsSidebarControl(logicalActiveEl);
                     logicalActiveEl.click();
                     this.consume(event);
                     state.lastNavigation = 'activate-' + (this.getElementText(logicalActiveEl).substring(0, 30) || 'control');
@@ -1608,6 +1769,8 @@
                         this.scheduleDetailFocusRetry();
                     } else if (isProfile) {
                         this.scheduleProfileMenuFocusRetry(logicalActiveEl);
+                    } else if (isSettingsEntry) {
+                        this.scheduleSettingsFocusRetry();
                     }
                     return true;
                 }
@@ -1615,6 +1778,69 @@
             }
 
             if (this.isIntroRoute()) return this.handleIntroKey(logicalActiveEl, candidates, keyCode, event);
+
+            if (this.isSettingsRoute()) {
+                var settingsLogin = this.findSettingsLoginAction(candidates);
+                var settingsControls = this.getSettingsPageControls(candidates);
+                var isSettingsControl = settingsControls.indexOf(logicalActiveEl) !== -1;
+
+                this.cancelSettingsFocusRetry();
+
+                if (this.isSettingsSidebarControl(logicalActiveEl) && keyCode === 39 && settingsLogin) {
+                    return this.focusHandled(settingsLogin, event, 'settings-sidebar-to-login', false);
+                }
+
+                if (isSettingsControl) {
+                    if (this.isSettingsLoginAction(logicalActiveEl)) {
+                        if (keyCode === 39) {
+                            var firstSettingsValue = this.findFirstSettingsValueControl(settingsControls);
+                            if (firstSettingsValue) {
+                                return this.focusHandled(firstSettingsValue, event,
+                                    'settings-login-to-first-value', false);
+                            }
+                        } else if (keyCode === 37) {
+                            var internalSettingsNav = this.findSettingsInternalNavTarget(
+                                logicalActiveEl, settingsControls, keyCode);
+                            if (internalSettingsNav) {
+                                return this.focusHandled(internalSettingsNav, event,
+                                    'settings-login-to-internal-nav', false);
+                            }
+                            var loginSidebar = this.findRouteSidebar(candidates);
+                            if (loginSidebar) {
+                                return this.focusHandled(loginSidebar, event,
+                                    'settings-login-to-sidebar', false);
+                            }
+                        } else if (keyCode === 38) {
+                            this.consume(event);
+                            return true;
+                        }
+                    } else if (this.isSettingsValueControl(logicalActiveEl) && keyCode === 37 && settingsLogin) {
+                        return this.focusHandled(settingsLogin, event,
+                            'settings-value-to-login', false);
+                    } else if (this.isSettingsInternalNavControl(logicalActiveEl) &&
+                        keyCode === 39 && settingsLogin) {
+                        return this.focusHandled(settingsLogin, event,
+                            'settings-internal-nav-to-login', false);
+                    }
+
+                    var settingsTarget = this.findBestSpatial(getRect(logicalActiveEl), settingsControls, keyCode);
+                    if (settingsTarget) {
+                        var settingsDirection = keyCode === 37 ? 'left' : keyCode === 38 ? 'up' :
+                            keyCode === 39 ? 'right' : 'down';
+                        return this.focusHandled(settingsTarget, event,
+                            'settings-control-' + settingsDirection, false);
+                    }
+                    if (keyCode === 37) {
+                        var settingsSidebar = this.findRouteSidebar(candidates);
+                        if (settingsSidebar) {
+                            return this.focusHandled(settingsSidebar, event,
+                                'settings-control-to-sidebar', false);
+                        }
+                    }
+                    this.consume(event);
+                    return true;
+                }
+            }
 
             var rows = this.getRowMap(candidates);
 
@@ -2240,6 +2466,12 @@
       }
       }
 
+    function handleIframeHashChange() {
+        if (NavigationAdapter.isSettingsRoute()) {
+            NavigationAdapter.scheduleSettingsFocusRetry();
+        }
+    }
+
     function attachIframeKeyListener() {
         var iframe = document.getElementById("app-iframe");
         if (!iframe) {
@@ -2261,6 +2493,15 @@
             }
 
             doc.addEventListener("keydown", handleKeyDown, true);
+            var frameWindow = iframe.contentWindow;
+            if (frameWindow && typeof frameWindow.addEventListener === 'function') {
+                try {
+                    frameWindow.removeEventListener('hashchange', handleIframeHashChange, true);
+                } catch (err) {
+                    // Ignore
+                }
+                frameWindow.addEventListener('hashchange', handleIframeHashChange, true);
+            }
             state.iframeListenerStatus = "attached";
             NavigationAdapter.init();
             NavigationAdapter.injectFocusStyle(doc);

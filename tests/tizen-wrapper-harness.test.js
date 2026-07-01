@@ -2040,9 +2040,9 @@ console.log('Running standalone Stremio wrapper POC tests...');
     console.log('[PASS] Test 16: Detail source-group fallback regression passed');
 })();
 
-// Test 17: Settings route sidebar exit and nested settings navigation
+// Test 17: Settings entry focus and anonymous-page navigation
 (function() {
-    console.log('Running Test 17: Settings route sidebar exit and nested settings navigation...');
+    console.log('Running Test 17: Settings entry focus and anonymous-page navigation...');
     var sb = createSandbox();
     var api = sb.context.window.__STREMIO_WEB_WRAPPER_POC__;
     var iframe = sb.elements['app-iframe'];
@@ -2103,30 +2103,65 @@ console.log('Running standalone Stremio wrapper POC tests...');
     }, { left: 70, top: 120, width: 120, height: 40 });
     var loginLink = makeElement('A', 'Log in / Sign up', { href: '#/intro' },
         { left: 220, top: 90, width: 180, height: 30 });
-    var authButton = makeElement('BUTTON', 'Authenticate', {},
+    var disabledAuthContainer = { className: 'button-container disabled', parentElement: null };
+    var authButton = makeElement('BUTTON', 'Authenticate', { tabindex: '-1', parentElement: disabledAuthContainer },
         { left: 360, top: 240, width: 180, height: 40 });
+    var supportLink = makeElement('A', 'Contact support', { href: 'https://support.example/' },
+        { left: 220, top: 150, width: 180, height: 30 });
+    var languageControl = makeElement('DIV', 'English', { tabindex: '0', className: 'multiselect-button' },
+        { left: 360, top: 300, width: 180, height: 40 });
 
-    var candidates = [outerSettings, generalTab, interfaceTab, loginLink, authButton];
+    var candidates = [outerSettings, generalTab, interfaceTab, loginLink, supportLink, authButton, languageControl];
     doc.querySelectorAll = function() {
         return candidates;
     };
 
+    doc.activeElement = null;
+    sb.flushTimeouts();
+    assert.strictEqual(loginLink.focusCount, 1, 'Direct settings entry should bootstrap focus to Log in / Sign up');
+
+    doc.activeElement = outerSettings;
+    var settingsEnter = sb.triggerIframeKeydown('Enter', 'Enter', 13);
+    assert.ok(settingsEnter.defaultPrevented, 'Settings Enter should be handled');
+    assert.strictEqual(outerSettings.clickCount, 1, 'Settings Enter should activate the route');
+    sb.flushTimeouts();
+    assert.strictEqual(loginLink.focusCount, 2, 'Settings entry should focus Log in / Sign up automatically');
+    assert.strictEqual(api.getState().lastNavigation, 'settings-route-focus-login');
+
+    doc.activeElement = generalTab;
+    sb.flushTimeouts();
+    assert.strictEqual(loginLink.focusCount, 3,
+        'Settings entry settling should recover when the page restores focus elsewhere');
+
     doc.activeElement = outerSettings;
     var sidebarRight = sb.triggerIframeKeydown('ArrowRight', 'ArrowRight', 39);
     assert.ok(sidebarRight.defaultPrevented, 'Settings sidebar Right should be handled');
-    assert.strictEqual(generalTab.focusCount, 1, 'Settings sidebar Right should enter the nested settings panel');
-    assert.strictEqual(api.getState().lastNavigation, 'sidebar-to-primary-content-right');
+    assert.strictEqual(loginLink.focusCount, 4, 'Settings sidebar Right should enter at Log in / Sign up');
+    assert.strictEqual(api.getState().lastNavigation, 'settings-sidebar-to-login');
 
-    doc.activeElement = generalTab;
-    var generalRight = sb.triggerIframeKeydown('ArrowRight', 'ArrowRight', 39);
-    assert.ok(generalRight.defaultPrevented, 'General Right should be handled spatially');
-    assert.strictEqual(loginLink.focusCount, 1, 'General Right should reach the account login link');
-    assert.strictEqual(authButton.focusCount, 0, 'Nearest account link should win before distant buttons');
+    doc.activeElement = loginLink;
+    var loginRight = sb.triggerIframeKeydown('ArrowRight', 'ArrowRight', 39);
+    assert.ok(loginRight.defaultPrevented, 'Login Right should be handled');
+    assert.strictEqual(languageControl.focusCount, 1, 'Login Right should reach the first enabled settings value');
+    assert.strictEqual(authButton.focusCount, 0, 'Login Right must not focus disabled Authenticate');
+
+    doc.activeElement = languageControl;
+    var languageLeft = sb.triggerIframeKeydown('ArrowLeft', 'ArrowLeft', 37);
+    assert.ok(languageLeft.defaultPrevented, 'Settings value Left should be handled');
+    assert.strictEqual(loginLink.focusCount, 5, 'Settings value Left should return to Log in / Sign up');
+
+    doc.activeElement = loginLink;
+    var loginDown = sb.triggerIframeKeydown('ArrowDown', 'ArrowDown', 40);
+    assert.ok(loginDown.defaultPrevented, 'Login Down should be handled');
+    assert.strictEqual(supportLink.focusCount, 1, 'Login Down should reach the next usable settings action');
+    assert.strictEqual(authButton.focusCount, 0, 'Disabled settings actions must be skipped');
+    sb.flushTimeouts();
+    assert.strictEqual(loginLink.focusCount, 5, 'Directional input should cancel the settings focus guard');
 
     doc.activeElement = loginLink;
     var loginLeft = sb.triggerIframeKeydown('ArrowLeft', 'ArrowLeft', 37);
     assert.ok(loginLeft.defaultPrevented, 'Login Left should be handled spatially');
-    assert.strictEqual(generalTab.focusCount, 2, 'Login Left should return to the nested settings navigation');
+    assert.strictEqual(generalTab.focusCount, 1, 'Login Left should return to the nested settings navigation');
 })();
 
 // Test 18: Profile Down reaches visible login action in the open menu
