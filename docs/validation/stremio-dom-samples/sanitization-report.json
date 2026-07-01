@@ -78,6 +78,17 @@
       "sanitized_bytes": 108060
     },
     {
+      "bytes": 1757,
+      "has_email": false,
+      "has_player_class": false,
+      "has_auth_copy": true,
+      "has_nav_menu": true,
+      "has_streams": false,
+      "source_file": "Playwright live DOM subtree (sanitized at capture)",
+      "sanitized_file": "docs/validation/stremio-dom-samples/anonymous-profile-menu-open.html",
+      "sanitized_bytes": 1757
+    },
+    {
       "bytes": 195642,
       "has_email": true,
       "has_player_class": true,

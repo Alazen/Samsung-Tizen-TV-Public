@@ -15,6 +15,7 @@ const expectedHtmlSamples = [
   "player-controls-visible-variant.html",
   "player-controls-menu-open.html",
   "nav-menu-open-home.html",
+  "anonymous-profile-menu-open.html",
   "home-after-login-extra.html"
 ];
 
@@ -56,6 +57,13 @@ test("selector fixtures contain navigation, detail, stream, and player signals",
   assert.match(homeText, /nav-tab-button|vertical-nav-bar|horizontal-nav-bar|menu-button|meta-item|poster/i);
   assert.match(detailText, /detail|stream|provider|source|season|episode|button-container/i);
   assert.match(playerText, /player|video|control|seek|progress|fullscreen|menu/i);
+});
+
+test("anonymous profile popup preserves the nested login-control contract", () => {
+  const popupText = readSample("anonymous-profile-menu-open.html");
+  assert.match(popupText, /nav-menu-popup-label[^>]*active[^>]*menu-toggle/i);
+  assert.match(popupText, /tabindex="0" title="Log in \/ Sign up"/i);
+  assert.match(popupText, /nav-menu-popup-label[\s\S]*Log in \/ Sign up[\s\S]*nav-menu-option/i);
 });
 
 test("runtime selectors stay aligned with sanitized Stremio samples", () => {

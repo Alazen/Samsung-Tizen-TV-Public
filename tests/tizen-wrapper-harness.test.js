@@ -697,7 +697,7 @@ console.log('Running standalone Stremio wrapper POC tests...');
         tabindex: '-1',
         parentElement: mockHeader
     }, { left: 900, top: 20, width: 60, height: 40 });
-    var loginAction = makeElement('BUTTON', 'Log in / Sign up', {},
+    var loginAction = makeElement('DIV', 'Log in / Sign up', { tabindex: '0' },
         { left: 780, top: 80, width: 180, height: 50 });
     profileToggle.focus = function() {
         this.focused = true;
@@ -709,20 +709,19 @@ console.log('Running standalone Stremio wrapper POC tests...');
         this.focusCount = (this.focusCount || 0) + 1;
         doc.activeElement = this;
     };
-    candidates = [profileToggle, loginAction];
-    assert.strictEqual(api.getState().navigationAdapter.candidateCount, 2,
-        'Profile toggle and login menu action should be included');
+    candidates = [profileToggle];
     doc.activeElement = profileToggle;
     sb.triggerIframeKeydown('Enter', 'Enter', 13);
+    candidates = [profileToggle, loginAction];
+    assert.strictEqual(api.getState().navigationAdapter.candidateCount, 2,
+        'Profile toggle and login menu action should be included after the menu opens');
     doc.activeElement = doc.body;
     loginAction.focusCount = 0;
     sb.flushTimeouts();
-    assert.strictEqual(loginAction.focusCount, 1, 'Profile Enter should claim the visible login action after the menu opens');
-    assert.strictEqual(api.getState().lastNavigation, 'profile-menu-focus', 'Profile menu focus should be recorded');
-    doc.activeElement = loginAction;
-    sb.triggerIframeKeydown('Enter', 'Enter', 13);
     assert.strictEqual(profileToggle.clickCount, 1, 'Profile toggle should activate with Enter');
-    assert.strictEqual(loginAction.clickCount, 1, 'Log in / Sign up should activate with Enter');
+    assert.strictEqual(loginAction.focusCount, 0, 'Anonymous login should not require popup focus');
+    assert.strictEqual(loginAction.clickCount, 1, 'Profile Enter should activate Log in / Sign up automatically');
+    assert.strictEqual(api.getState().lastNavigation, 'profile-login-direct', 'Direct login activation should be recorded');
 
     // Intro uses semantic form order and meaningful cross-column actions.
     iframe.contentWindow.location.hash = '#/intro';
@@ -2039,6 +2038,216 @@ console.log('Running standalone Stremio wrapper POC tests...');
     assert.strictEqual(unrelatedPlay.focusCount, 0, 'Unrelated left action must not receive fallback focus');
 
     console.log('[PASS] Test 16: Detail source-group fallback regression passed');
+})();
+
+// Test 17: Settings route sidebar exit and nested settings navigation
+(function() {
+    console.log('Running Test 17: Settings route sidebar exit and nested settings navigation...');
+    var sb = createSandbox();
+    var api = sb.context.window.__STREMIO_WEB_WRAPPER_POC__;
+    var iframe = sb.elements['app-iframe'];
+    iframe.onload();
+    var doc = iframe.contentWindow.document;
+
+    function makeElement(tagName, text, attrs, rect) {
+        attrs = attrs || {};
+        return {
+            tagName: tagName,
+            innerText: text || '',
+            textContent: text || '',
+            className: attrs.className || '',
+            disabled: false,
+            parentElement: attrs.parentElement || null,
+            focusCount: 0,
+            clickCount: 0,
+            getAttribute: function(name) {
+                if (name === 'class') return this.className;
+                return Object.prototype.hasOwnProperty.call(attrs, name) ? attrs[name] : null;
+            },
+            getBoundingClientRect: function() { return rect; },
+            focus: function() {
+                this.focusCount++;
+                doc.activeElement = this;
+            },
+            click: function() {
+                this.clickCount++;
+            }
+        };
+    }
+
+    var mockSettingsNav = {
+        tagName: 'NAV',
+        className: 'settings-menu',
+        getAttribute: function(name) {
+            if (name === 'class') return this.className;
+            return null;
+        },
+        parentElement: null
+    };
+
+    iframe.contentWindow = {
+        document: doc,
+        location: { hash: '#/settings' }
+    };
+
+    var outerSettings = makeElement('A', 'Settings', { href: '#/settings' },
+        { left: 10, top: 260, width: 60, height: 60 });
+    var generalTab = makeElement('A', 'General', {
+        href: '#/settings/general',
+        parentElement: mockSettingsNav,
+        'aria-current': 'page'
+    }, { left: 70, top: 80, width: 120, height: 40 });
+    var interfaceTab = makeElement('A', 'Interface', {
+        href: '#/settings/interface',
+        parentElement: mockSettingsNav
+    }, { left: 70, top: 120, width: 120, height: 40 });
+    var loginLink = makeElement('A', 'Log in / Sign up', { href: '#/intro' },
+        { left: 220, top: 90, width: 180, height: 30 });
+    var authButton = makeElement('BUTTON', 'Authenticate', {},
+        { left: 360, top: 240, width: 180, height: 40 });
+
+    var candidates = [outerSettings, generalTab, interfaceTab, loginLink, authButton];
+    doc.querySelectorAll = function() {
+        return candidates;
+    };
+
+    doc.activeElement = outerSettings;
+    var sidebarRight = sb.triggerIframeKeydown('ArrowRight', 'ArrowRight', 39);
+    assert.ok(sidebarRight.defaultPrevented, 'Settings sidebar Right should be handled');
+    assert.strictEqual(generalTab.focusCount, 1, 'Settings sidebar Right should enter the nested settings panel');
+    assert.strictEqual(api.getState().lastNavigation, 'sidebar-to-primary-content-right');
+
+    doc.activeElement = generalTab;
+    var generalRight = sb.triggerIframeKeydown('ArrowRight', 'ArrowRight', 39);
+    assert.ok(generalRight.defaultPrevented, 'General Right should be handled spatially');
+    assert.strictEqual(loginLink.focusCount, 1, 'General Right should reach the account login link');
+    assert.strictEqual(authButton.focusCount, 0, 'Nearest account link should win before distant buttons');
+
+    doc.activeElement = loginLink;
+    var loginLeft = sb.triggerIframeKeydown('ArrowLeft', 'ArrowLeft', 37);
+    assert.ok(loginLeft.defaultPrevented, 'Login Left should be handled spatially');
+    assert.strictEqual(generalTab.focusCount, 2, 'Login Left should return to the nested settings navigation');
+})();
+
+// Test 18: Profile Down reaches visible login action in the open menu
+(function() {
+    console.log('Running Test 18: Profile Down reaches visible login action...');
+    var sb = createSandbox();
+    var api = sb.context.window.__STREMIO_WEB_WRAPPER_POC__;
+    var iframe = sb.elements['app-iframe'];
+    iframe.onload();
+    var doc = iframe.contentWindow.document;
+
+    function makeElement(tagName, text, attrs, rect) {
+        attrs = attrs || {};
+        return {
+            tagName: tagName,
+            innerText: text || '',
+            textContent: text || '',
+            className: attrs.className || '',
+            disabled: false,
+            parentElement: attrs.parentElement || null,
+            focusCount: 0,
+            getAttribute: function(name) {
+                if (name === 'class') return this.className;
+                return Object.prototype.hasOwnProperty.call(attrs, name) ? attrs[name] : null;
+            },
+            getBoundingClientRect: function() { return rect; },
+            focus: function() {
+                this.focusCount++;
+                doc.activeElement = this;
+            },
+            click: function() {
+                this.clickCount = (this.clickCount || 0) + 1;
+            }
+        };
+    }
+
+    var mockHeader = {
+        tagName: 'HEADER',
+        getAttribute: function() { return null; },
+        parentElement: null
+    };
+
+    iframe.contentWindow = {
+        document: doc,
+        location: { hash: '#/' }
+    };
+
+    var profileToggle = makeElement('DIV', '', {
+        tabindex: '-1',
+        className: 'label-container nav-menu-popup-label active menu-toggle',
+        parentElement: mockHeader
+    }, { left: 900, top: 20, width: 60, height: 40 });
+    var menuRoot = makeElement('DIV', '', {
+        className: 'nav-menu-container',
+        parentElement: profileToggle
+    }, { left: 760, top: 60, width: 200, height: 300 });
+    var loginAction = makeElement('DIV', 'Log in / Sign up', {
+        tabindex: '0',
+        title: 'Log in / Sign up',
+        className: 'button-container',
+        parentElement: menuRoot
+    },
+        { left: 780, top: 80, width: 180, height: 50 });
+    var settingsAction = makeElement('A', 'Settings', {
+        tabindex: '0',
+        href: '#/settings',
+        className: 'nav-menu-option button-container',
+        parentElement: menuRoot
+    }, { left: 780, top: 140, width: 180, height: 40 });
+    var addonsAction = makeElement('A', 'Addons', {
+        tabindex: '0',
+        href: '#/addons',
+        className: 'nav-menu-option button-container',
+        parentElement: menuRoot
+    }, { left: 780, top: 190, width: 180, height: 40 });
+    var card = makeElement('A', 'Movie Card', { href: '#/detail/movie/tt123' },
+        { left: 200, top: 150, width: 150, height: 150 });
+
+    var candidates = [profileToggle, loginAction, settingsAction, addonsAction, card];
+    profileToggle.innerText = 'Anonymous user Log in / Sign up Settings Addons Play URL/Magnet link Help & Feedback';
+    profileToggle.textContent = profileToggle.innerText;
+    doc.querySelectorAll = function() {
+        return candidates;
+    };
+
+    doc.activeElement = profileToggle;
+    var profileDown = sb.triggerIframeKeydown('ArrowDown', 'ArrowDown', 40);
+    assert.ok(profileDown.defaultPrevented, 'Profile Down should be handled');
+    assert.strictEqual(loginAction.focusCount, 1, 'Profile Down should enter the visible login action');
+    assert.strictEqual(card.focusCount, 0, 'Profile Down should prefer the open menu over home-page cards');
+    assert.strictEqual(api.getState().lastNavigation, 'open-profile-menu-capture-focus');
+
+    doc.activeElement = profileToggle;
+    var profileEnter = sb.triggerIframeKeydown('Enter', 'Enter', 13);
+    assert.ok(profileEnter.defaultPrevented, 'Profile Enter should be handled while the popup is open');
+    assert.strictEqual(loginAction.clickCount, 1,
+        'Profile Enter should activate the open popup login instead of closing the menu');
+    assert.strictEqual(profileToggle.clickCount || 0, 0,
+        'Profile Enter must not toggle an already-open menu closed');
+    assert.strictEqual(api.getState().lastNavigation, 'activate-profile-popup-login');
+
+    doc.activeElement = doc.body;
+    var bodyDown = sb.triggerIframeKeydown('ArrowDown', 'ArrowDown', 40);
+    assert.ok(bodyDown.defaultPrevented, 'Open popup must capture Down after Stremio drops focus to BODY');
+    assert.strictEqual(loginAction.focusCount, 2, 'BODY Down should focus the popup login control');
+    assert.strictEqual(api.getState().lastNavigation, 'open-profile-menu-capture-focus');
+
+    doc.activeElement = loginAction;
+    var loginDown = sb.triggerIframeKeydown('ArrowDown', 'ArrowDown', 40);
+    assert.ok(loginDown.defaultPrevented, 'Popup login Down should be handled inside the popup');
+    assert.strictEqual(settingsAction.focusCount, 1, 'Popup login Down should focus Settings');
+
+    doc.activeElement = settingsAction;
+    var settingsRight = sb.triggerIframeKeydown('ArrowRight', 'ArrowRight', 39);
+    assert.ok(settingsRight.defaultPrevented, 'Popup Right should advance through popup controls');
+    assert.strictEqual(addonsAction.focusCount, 1, 'Popup Right should focus Addons');
+
+    doc.activeElement = addonsAction;
+    var addonsLeft = sb.triggerIframeKeydown('ArrowLeft', 'ArrowLeft', 37);
+    assert.ok(addonsLeft.defaultPrevented, 'Popup Left should move backward through popup controls');
+    assert.strictEqual(settingsAction.focusCount, 2, 'Popup Left should return to Settings');
 })();
 
 console.log('All tests passed successfully!');

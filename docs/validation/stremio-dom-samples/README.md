@@ -24,6 +24,7 @@ These samples are sanitized before being committed. The sanitized files remove o
 - `player-controls-visible-variant.html`: second player-controls sample.
 - `player-controls-menu-open.html`: player state with a menu or extra controls open.
 - `nav-menu-open-home.html`: home screen with account/navigation menu open.
+- `anonymous-profile-menu-open.html`: anonymous profile toggle with its nested login popup open.
 - `home-after-login-extra.html`: additional post-login/home or mixed-state sample.
 
 ## Use

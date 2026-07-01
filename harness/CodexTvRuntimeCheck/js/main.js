@@ -579,21 +579,29 @@
             if (this.isFullscreenElement && this.isFullscreenElement(el)) return false;
             if (this.isProfileElement && this.isProfileElement(el)) return false;
             var href = el.getAttribute('href') || '';
+            var hrefRoute = href.split('?')[0];
             var text = getText(el);
-            if (text === 'board' || text === 'discover' || text === 'library' || text === 'calendar' || text === 'addons' || text === 'settings') {
-                return true;
+            var selfClassName = (el.className || '').toLowerCase();
+            if (selfClassName.indexOf('nav-menu-option') !== -1 || selfClassName.indexOf('menu-toggle') !== -1) {
+                return false;
             }
-            if (href === '#/' || href === '/' || href.indexOf('#/discover') !== -1 || href.indexOf('#/library') !== -1 || href.indexOf('#/calendar') !== -1 || href.indexOf('#/addons') !== -1 || href.indexOf('#/settings') !== -1) {
+            if (text === 'board' || text === 'discover' || text === 'library' || text === 'calendar' || text === 'addons' || text === 'settings') {
+                return selfClassName.indexOf('nav-tab-button') !== -1 || getRect(el).left < 140;
+            }
+            if (hrefRoute === '#/' || hrefRoute === '/' || hrefRoute === '#/discover' ||
+                hrefRoute === '#/library' || hrefRoute === '#/calendar' ||
+                hrefRoute === '#/addons' || hrefRoute === '#/settings') {
                 var parent = el.parentElement;
                 while (parent) {
                     var className = (parent.className || '').toLowerCase();
-                    if (className.indexOf('sidebar') !== -1 || className.indexOf('menu') !== -1 || className.indexOf('nav') !== -1) {
+                    if (className.indexOf('sidebar') !== -1 || className.indexOf('nav-tab-button') !== -1) {
                         return true;
                     }
                     parent = parent.parentElement;
                 }
-                if (href === '#/' || href === '#/discover' || href === '#/library' || href === '#/calendar' || href === '#/addons' || href === '#/settings') {
-                    return true;
+                if (hrefRoute === '#/' || hrefRoute === '#/discover' || hrefRoute === '#/library' ||
+                    hrefRoute === '#/calendar' || hrefRoute === '#/addons' || hrefRoute === '#/settings') {
+                    return selfClassName.indexOf('nav-tab-button') !== -1 || getRect(el).left < 140;
                 }
             }
             return false;
@@ -909,6 +917,157 @@
                 if (this.isProfileElement(candidates[i], candidates)) return candidates[i];
             }
             return null;
+        },
+        isPopupMenuOption: function(el) {
+            if (!el) return false;
+            var className = (el.className || '').toLowerCase();
+            return className.indexOf('nav-menu-option') !== -1;
+        },
+        isDescendantOf: function(el, ancestor) {
+            var node = el;
+            while (node) {
+                if (node === ancestor) return true;
+                node = node.parentElement;
+            }
+            return false;
+        },
+        findOpenProfileMenuRoot: function(candidates) {
+            for (var i = 0; i < candidates.length; i++) {
+                if (!this.isExactLoginAction(candidates[i])) continue;
+                var node = candidates[i].parentElement;
+                while (node) {
+                    var className = (node.className || '').toLowerCase();
+                    if (className.indexOf('nav-menu-container') !== -1) return node;
+                    node = node.parentElement;
+                }
+            }
+            return null;
+        },
+        getOpenProfileMenuControls: function(root, candidates) {
+            if (!root) return [];
+            var controls = [];
+            for (var i = 0; i < candidates.length; i++) {
+                var cand = candidates[i];
+                if (!this.isDescendantOf(cand, root)) continue;
+                if (this.isExactLoginAction(cand) || this.isPopupMenuOption(cand)) {
+                    controls.push(cand);
+                }
+            }
+            controls.sort(function(a, b) {
+                var ar = getRect(a);
+                var br = getRect(b);
+                if (Math.abs(ar.top - br.top) < 8) return ar.left - br.left;
+                return ar.top - br.top;
+            });
+            return controls;
+        },
+        isExactLoginAction: function(el) {
+            if (!el) return false;
+            var text = getText(el);
+            var title = el.getAttribute ? (el.getAttribute('title') || '').trim().toLowerCase() : '';
+            var ariaLabel = el.getAttribute ? (el.getAttribute('aria-label') || '').trim().toLowerCase() : '';
+            var labels = ['log in / sign up', 'login / sign up', 'log in', 'sign in'];
+            return labels.indexOf(text) !== -1 || labels.indexOf(title) !== -1 ||
+                labels.indexOf(ariaLabel) !== -1;
+        },
+        findPopupMenuLoginAction: function(anchorEl, candidates) {
+            var actions = [];
+            for (var i = 0; i < candidates.length; i++) {
+                var cand = candidates[i];
+                if (cand === anchorEl || !this.isExactLoginAction(cand)) continue;
+                actions.push(cand);
+            }
+            if (actions.length === 0) return null;
+            if (anchorEl) {
+                var anchorRect = getRect(anchorEl);
+                var anchorX = anchorRect.left + anchorRect.width / 2;
+                var anchorY = anchorRect.top + anchorRect.height / 2;
+                actions.sort(function(a, b) {
+                    var ar = getRect(a);
+                    var br = getRect(b);
+                    var adx = ar.left + ar.width / 2 - anchorX;
+                    var ady = ar.top + ar.height / 2 - anchorY;
+                    var bdx = br.left + br.width / 2 - anchorX;
+                    var bdy = br.top + br.height / 2 - anchorY;
+                    return adx * adx + ady * ady - (bdx * bdx + bdy * bdy);
+                });
+            }
+            return actions[0];
+        },
+        focusPopupMenuLogin: function(anchorEl, candidates, event, diagnostic) {
+            var loginAction = this.findPopupMenuLoginAction(anchorEl, candidates);
+            if (!loginAction) return false;
+
+            if (loginAction.getAttribute && loginAction.getAttribute('tabindex') === null &&
+                loginAction.setAttribute) {
+                loginAction.setAttribute('tabindex', '0');
+            }
+            return this.focusHandled(loginAction, event, diagnostic, false);
+        },
+        isPrimaryContentElement: function(el, candidates) {
+            if (!el || this.isSeeAllElement(el)) return false;
+            if (this.isSidebarElement(el) || this.isSearchElement(el) ||
+                this.isFullscreenElement(el) || this.isProfileElement(el, candidates)) {
+                return false;
+            }
+            if (this.getContentCards(candidates).indexOf(el) !== -1) return false;
+
+            if (this.isEditable(el)) return true;
+
+            var tag = (el.tagName || '').toLowerCase();
+            var role = el.getAttribute ? (el.getAttribute('role') || '').toLowerCase() : '';
+            var tabIndex = el.getAttribute ? el.getAttribute('tabindex') : null;
+            var href = el.getAttribute ? (el.getAttribute('href') || '') : '';
+
+            return tag === 'a' || tag === 'button' || tag === 'input' ||
+                tag === 'select' || tag === 'textarea' || role === 'button' ||
+                role === 'link' || tabIndex !== null || !!href;
+        },
+        findPrimaryContentTarget: function(anchorEl, candidates, keyCode, options) {
+            options = options || {};
+            var primary = [];
+            for (var i = 0; i < candidates.length; i++) {
+                if (this.isPrimaryContentElement(candidates[i], candidates)) {
+                    primary.push(candidates[i]);
+                }
+            }
+            if (primary.length === 0) return null;
+
+            if (anchorEl) {
+                if (options.preferLeftmostColumn && keyCode === 39) {
+                    var anchorRect = getRect(anchorEl);
+                    var rightSide = [];
+                    for (var j = 0; j < primary.length; j++) {
+                        if ((getRect(primary[j]).left + getRect(primary[j]).width / 2) >
+                            (anchorRect.left + anchorRect.width / 2)) {
+                            rightSide.push(primary[j]);
+                        }
+                    }
+                    if (rightSide.length > 0) {
+                        rightSide.sort(function(a, b) {
+                            var ar = getRect(a);
+                            var br = getRect(b);
+                            if (Math.abs(ar.left - br.left) < 15) {
+                                return ar.top - br.top;
+                            }
+                            return ar.left - br.left;
+                        });
+                        return rightSide[0];
+                    }
+                }
+                var spatial = this.findBestSpatial(getRect(anchorEl), primary, keyCode);
+                if (spatial) return spatial;
+            }
+
+            primary.sort(function(a, b) {
+                var ar = getRect(a);
+                var br = getRect(b);
+                if (Math.abs(ar.top - br.top) < 15) {
+                    return ar.left - br.left;
+                }
+                return ar.top - br.top;
+            });
+            return primary[0];
         },
         isProfileMenuAction: function(el, candidates) {
             if (!el || this.isEditable(el) || this.isSeeAllElement(el)) return false;
@@ -1261,12 +1420,24 @@
                     self._profileMenuFocusTimeoutId = null;
                     return;
                 }
+                var candidates = self.getFocusableElements(doc);
+                var loginAction = self.findPopupMenuLoginAction(anchorEl, candidates);
+                if (loginAction && typeof loginAction.click === 'function') {
+                    try {
+                        loginAction.click();
+                        state.lastNavigation = 'profile-login-direct';
+                        refreshDiagnostics(true);
+                        self._profileMenuFocusTimeoutId = null;
+                        return;
+                    } catch (e) {
+                        // Retry while the popup is still mounting.
+                    }
+                }
                 var active = doc.activeElement;
                 if (active && active !== doc.body && active !== anchorEl) {
                     self._profileMenuFocusTimeoutId = null;
                     return;
                 }
-                var candidates = self.getFocusableElements(doc);
                 var action = self.findProfileMenuAction(anchorRect, candidates);
                 if (action && typeof action.focus === 'function') {
                     try {
@@ -1332,6 +1503,29 @@
                 cancelBootstrap();
             }
 
+            var openProfileMenuRoot = this.findOpenProfileMenuRoot(candidates);
+            if (openProfileMenuRoot) {
+                var popupControls = this.getOpenProfileMenuControls(openProfileMenuRoot, candidates);
+                if (popupControls.length > 0) {
+                    var activePopupIndex = popupControls.indexOf(activeEl);
+                    if (!hasDomFocus || activePopupIndex === -1) {
+                        if (keyCode >= 37 && keyCode <= 40) {
+                            return this.focusHandled(popupControls[0], event,
+                                'open-profile-menu-capture-focus', false);
+                        }
+                    } else if (keyCode >= 37 && keyCode <= 40) {
+                        var popupStep = keyCode === 39 || keyCode === 40 ? 1 : -1;
+                        var popupTargetIndex = activePopupIndex + popupStep;
+                        if (popupTargetIndex < 0) popupTargetIndex = 0;
+                        if (popupTargetIndex >= popupControls.length) {
+                            popupTargetIndex = popupControls.length - 1;
+                        }
+                        return this.focusHandled(popupControls[popupTargetIndex], event,
+                            'open-profile-menu-control-navigation', false);
+                    }
+                }
+            }
+
             if (!hasDomFocus) {
                 if (this.isIntroRoute()) {
                     var email = this.findIntroField(candidates, 'email');
@@ -1369,6 +1563,12 @@
                         if (rows.length > 0 && rows[0].length > 0) {
                             return this.focusHandled(rows[0][0], event, 'sidebar-to-content-right', false);
                         }
+                        var routeContent = this.findPrimaryContentTarget(selected, candidates, keyCode, {
+                            preferLeftmostColumn: true
+                        });
+                        if (routeContent) {
+                            return this.focusHandled(routeContent, event, 'sidebar-to-primary-content-right', false);
+                        }
                     }
                 } else {
                     if (keyCode === 37) {
@@ -1388,6 +1588,15 @@
             if (keyCode === 13) {
                 if (this.isSearchElement(logicalActiveEl)) {
                     return false;
+                }
+                if (this.isProfileElement(logicalActiveEl, candidates)) {
+                    var openPopupLogin = this.findPopupMenuLoginAction(logicalActiveEl, candidates);
+                    if (openPopupLogin && typeof openPopupLogin.click === 'function') {
+                        openPopupLogin.click();
+                        this.consume(event);
+                        state.lastNavigation = 'activate-profile-popup-login';
+                        return true;
+                    }
                 }
                 if (logicalActiveEl && typeof logicalActiveEl.click === 'function') {
                     var isCard = contentCards.indexOf(logicalActiveEl) !== -1;
@@ -1425,6 +1634,8 @@
                     if (rows.length > 0 && rows[0].length > 0) {
                         return this.focusHandled(rows[0][0], event, 'search-to-first-card', false);
                     }
+                    var searchContent = this.findPrimaryContentTarget(logicalActiveEl, candidates, keyCode);
+                    if (searchContent) return this.focusHandled(searchContent, event, 'search-to-primary-content', false);
                 } else if (keyCode === 38) {
                     this.consume(event);
                     return true;
@@ -1443,6 +1654,10 @@
                     if (rows.length > 0 && rows[0].length > 0) {
                         return this.focusHandled(rows[0][0], event, 'fullscreen-to-first-card', false);
                     }
+                    var fullscreenContent = this.findPrimaryContentTarget(logicalActiveEl, candidates, keyCode);
+                    if (fullscreenContent) {
+                        return this.focusHandled(fullscreenContent, event, 'fullscreen-to-primary-content', false);
+                    }
                 } else if (keyCode === 38) {
                     this.consume(event);
                     return true;
@@ -1458,8 +1673,18 @@
                     this.consume(event);
                     return true;
                 } else if (keyCode === 40) {
+                    if (this.focusPopupMenuLogin(logicalActiveEl, candidates, event,
+                        'profile-to-popup-login')) {
+                        return true;
+                    }
+                    var menuAction = this.findProfileMenuAction(getRect(logicalActiveEl), candidates);
+                    if (menuAction) return this.focusHandled(menuAction, event, 'profile-to-menu-action', false);
                     if (rows.length > 0 && rows[0].length > 0) {
                         return this.focusHandled(rows[0][0], event, 'profile-to-first-card', false);
+                    }
+                    var profileContent = this.findPrimaryContentTarget(logicalActiveEl, candidates, keyCode);
+                    if (profileContent) {
+                        return this.focusHandled(profileContent, event, 'profile-to-primary-content-down', false);
                     }
                 } else if (keyCode === 38) {
                     this.consume(event);
@@ -1471,6 +1696,8 @@
             var isCurrentSidebar = this.isSidebarElement(logicalActiveEl);
             var isCurrentCard = contentCards.indexOf(logicalActiveEl) !== -1;
             var isCurrentSeeAll = this.isSeeAllElement(logicalActiveEl);
+            var isCurrentPrimaryContent = this.isPrimaryContentElement(logicalActiveEl, candidates);
+            var isCurrentPopupMenuOption = this.isPopupMenuOption(logicalActiveEl);
 
             if (isCurrentSidebar) {
                 if (keyCode === 38) {
@@ -1496,8 +1723,37 @@
                     if (rows.length > 0 && rows[0].length > 0) {
                         return this.focusHandled(rows[0][0], event, 'sidebar-to-content-right', false);
                     }
+                    var sidebarContent = this.findPrimaryContentTarget(logicalActiveEl, candidates, keyCode, {
+                        preferLeftmostColumn: true
+                    });
+                    if (sidebarContent) {
+                        return this.focusHandled(sidebarContent, event, 'sidebar-to-primary-content-right', false);
+                    }
                 }
                 return false;
+            }
+
+            if (isCurrentPopupMenuOption) {
+                if (keyCode === 38) {
+                    var popupLogin = this.findPopupMenuLoginAction(logicalActiveEl, candidates);
+                    if (popupLogin) return this.focusHandled(popupLogin, event, 'popup-menu-up-to-login', false);
+                }
+            }
+
+            if (isCurrentPrimaryContent && !this.isEditable(logicalActiveEl)) {
+                var primaryTarget = this.findPrimaryContentTarget(logicalActiveEl, candidates, keyCode);
+                if (primaryTarget && primaryTarget !== logicalActiveEl) {
+                    var primaryDirection = keyCode === 37 ? 'left' : keyCode === 38 ? 'up' :
+                        keyCode === 39 ? 'right' : 'down';
+                    return this.focusHandled(primaryTarget, event, 'primary-content-' + primaryDirection, false);
+                }
+
+                if (keyCode === 37) {
+                    var sidebarHome = this.findHomeControl(candidates);
+                    if (sidebarHome) return this.focusHandled(sidebarHome, event, 'primary-content-to-home', false);
+                    var routeSidebar = this.findRouteSidebar(candidates);
+                    if (routeSidebar) return this.focusHandled(routeSidebar, event, 'primary-content-to-sidebar', true);
+                }
             }
 
             if (isCurrentCard && !this.isEditable(logicalActiveEl)) {
